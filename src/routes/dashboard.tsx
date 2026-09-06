@@ -16,12 +16,25 @@ export const Route = createFileRoute("/dashboard")({
 
 const label = (code: string) => declarations.find((d) => d.code === code)?.declaration ?? code;
 
+const order = { FAIL: 0, REVIEW: 1, PASS: 2 } as const;
+
 function Dashboard() {
   const [query, setQuery] = useState("");
-  const rows = useMemo(
-    () => products.filter((p) => `${p.code} ${p.product} ${p.category}`.toLowerCase().includes(query.toLowerCase())),
-    [query],
-  );
+  const [status, setStatus] = useState<"ALL" | "PASS" | "REVIEW" | "FAIL">("ALL");
+  const [sort, setSort] = useState<"severity" | "recent" | "product" | "mrp">("severity");
+  const rows = useMemo(() => {
+    const latest = (p: (typeof products)[number]) => p.inspections[0]?.date ?? "";
+    return products
+      .filter((p) => `${p.code} ${p.product} ${p.category}`.toLowerCase().includes(query.toLowerCase()))
+      .filter((p) => status === "ALL" || p.verdict === status)
+      .slice()
+      .sort((a, b) =>
+        sort === "recent" ? latest(b).localeCompare(latest(a))
+        : sort === "product" ? a.product.localeCompare(b.product)
+        : sort === "mrp" ? b.mrp - a.mrp
+        : order[a.verdict] - order[b.verdict],
+      );
+  }, [query, status, sort]);
   const counts = {
     PASS: products.filter((p) => p.verdict === "PASS").length,
     FAIL: products.filter((p) => p.verdict === "FAIL").length,
