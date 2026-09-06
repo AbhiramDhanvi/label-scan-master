@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { FileDown, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { products, verdictClass } from "@/data/lmpc";
@@ -35,10 +35,14 @@ function Inspect() {
     lotSize: "",
     site: "",
     officer: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: "",
     imported: false,
     measuredMm: "",
   });
+
+  useEffect(() => {
+    setBatch((prev) => (prev.date ? prev : { ...prev, date: new Date().toISOString().slice(0, 10) }));
+  }, []);
 
   const result = reading
     ? evaluateLabel(reading, { imported: batch.imported, measuredMm: batch.measuredMm ? Number.parseFloat(batch.measuredMm) : undefined })
