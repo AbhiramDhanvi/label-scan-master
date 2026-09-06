@@ -16,12 +16,25 @@ export const Route = createFileRoute("/dashboard")({
 
 const label = (code: string) => declarations.find((d) => d.code === code)?.declaration ?? code;
 
+const order = { FAIL: 0, REVIEW: 1, PASS: 2 } as const;
+
 function Dashboard() {
   const [query, setQuery] = useState("");
-  const rows = useMemo(
-    () => products.filter((p) => `${p.code} ${p.product} ${p.category}`.toLowerCase().includes(query.toLowerCase())),
-    [query],
-  );
+  const [status, setStatus] = useState<"ALL" | "PASS" | "REVIEW" | "FAIL">("ALL");
+  const [sort, setSort] = useState<"severity" | "recent" | "product" | "mrp">("severity");
+  const rows = useMemo(() => {
+    const latest = (p: (typeof products)[number]) => p.inspections[0]?.date ?? "";
+    return products
+      .filter((p) => `${p.code} ${p.product} ${p.category}`.toLowerCase().includes(query.toLowerCase()))
+      .filter((p) => status === "ALL" || p.verdict === status)
+      .slice()
+      .sort((a, b) =>
+        sort === "recent" ? latest(b).localeCompare(latest(a))
+        : sort === "product" ? a.product.localeCompare(b.product)
+        : sort === "mrp" ? b.mrp - a.mrp
+        : order[a.verdict] - order[b.verdict],
+      );
+  }, [query, status, sort]);
   const counts = {
     PASS: products.filter((p) => p.verdict === "PASS").length,
     FAIL: products.filter((p) => p.verdict === "FAIL").length,
@@ -50,9 +63,20 @@ function Dashboard() {
 
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">
           <section className="bg-card outline outline-border lg:col-span-8">
-            <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
               <h2 className="font-mono text-xs font-semibold">STATUS BY PRODUCT</h2>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code, product, category" className="w-56 bg-background px-2.5 py-1 text-[12px] outline outline-border" />
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code, product, category" className="w-52 bg-background px-2.5 py-1 text-[12px] outline outline-border" />
+                <div className="flex">{(["ALL", "FAIL", "REVIEW", "PASS"] as const).map((key) => (
+                  <button key={key} type="button" onClick={() => setStatus(key)} className={`px-2 py-1 font-mono text-[10px] outline outline-border ${status === key ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>{key}</button>
+                ))}</div>
+                <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="bg-background px-2 py-1 font-mono text-[10px] outline outline-border">
+                  <option value="severity">Sort: severity</option>
+                  <option value="recent">Sort: most recent</option>
+                  <option value="product">Sort: product name</option>
+                  <option value="mrp">Sort: highest MRP</option>
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-[13px]">

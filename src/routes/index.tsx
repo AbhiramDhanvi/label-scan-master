@@ -75,6 +75,7 @@ function Index() {
           <div className="flex items-center gap-2.5"><span className="grid size-8 place-items-center bg-foreground font-mono text-[11px] font-semibold text-background">LM</span><div className="leading-tight"><p className="font-mono text-[11px] font-semibold">METROGRAPH<span className="text-primary">.</span></p><p className="text-[10px] text-muted-foreground">Legal Metrology Inspection Console</p></div></div>
           <nav className="ml-4 hidden items-center gap-1 md:flex">
             <a className="bg-foreground px-2.5 py-1.5 text-xs font-medium text-background" href="#console">Console</a>
+            <Link to="/inspect" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">New inspection</Link>
             <Link to="/dashboard" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Dashboard</Link>
             <Link to="/rules" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Legal limits</Link>
             <a className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground" href="#findings">Findings</a>
