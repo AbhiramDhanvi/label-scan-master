@@ -25,7 +25,7 @@ export const parseQuantity = (value: string | null): number | null => {
 
 const present = (value: string | null): boolean => Boolean(value && value.trim().length > 1);
 
-export function evaluateLabel(reading: LabelReading, opts: { imported: boolean; measuredMm?: number }): {
+export function evaluateLabel(reading: LabelReading, opts: { imported: boolean; measuredMm?: number | undefined }): {
   fields: FieldResult[];
   verdict: Verdict;
   band: ReturnType<typeof bandForQuantity> | null;
