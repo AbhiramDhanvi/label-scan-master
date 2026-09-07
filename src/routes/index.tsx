@@ -118,7 +118,7 @@ function Index() {
               </div>
             </section>
 
-            <section className="bg-card outline outline-border">
+            <section id="declarations" className="bg-card outline outline-border">
               <PanelTitle title="DECLARATION CHECKLIST" meta={scanned ? `${declarations.length - selected.flagged.length} / ${declarations.length}` : "NOT SCANNED"} />
               <ul className="divide-y divide-border/70 text-[13px]">{declarations.map((item) => {
                 const isFlagged = selected.flagged.includes(item.code);
