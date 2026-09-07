@@ -232,31 +232,6 @@ function Rules() {
             </div>
           </Section>
 
-          <Section title="AMENDMENTS" meta="VERSIONING BASIS">
-            <table className="w-full min-w-[640px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Rule code</th><th className={th}>Amendment</th><th className={th}>Effective</th><th className={th}>Citation</th></tr></thead>
-              <tbody>{amendments.map((row) => (
-                <tr key={row.code + row.effective} className="border-b border-border/70">
-                  <td className={`${td} font-mono text-xs`}>{row.code}</td>
-                  <td className={td}>{row.amendment}</td>
-                  <td className={`${td} font-mono`}>{row.effective}</td>
-                  <td className={`${td} text-muted-foreground`}>{row.citation}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </Section>
-
-          <Section title="LIMITS AND PENALTIES">
-            <table className="w-full min-w-[520px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Provision</th><th className={th}>Limit</th></tr></thead>
-              <tbody>{penalties.map((row) => (
-                <tr key={row.provision} className="border-b border-border/70">
-                  <td className={`${td} font-medium`}>{row.provision}</td>
-                  <td className={`${td} text-muted-foreground`}>{row.limit}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </Section>
         </div>
 
         <p className="mt-8 font-mono text-[11px]"><Link to="/" className="text-muted-foreground hover:text-foreground">New inspection</Link> · <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">Dashboard</Link></p>
