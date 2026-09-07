@@ -6,9 +6,9 @@ import { bandFor, fetchInspections, fetchLimits, fetchProducts, fetchReinspectio
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [
-    { title: "Compliance Dashboard | Metrograph" },
+    { title: "Compliance Dashboard | Pramana Legal Metrology" },
     { name: "description", content: "Compliance status for every stored packaged commodity, its recorded inspection history and the label declarations currently flagged." },
-    { property: "og:title", content: "Compliance Dashboard | Metrograph" },
+    { property: "og:title", content: "Compliance Dashboard | Pramana Legal Metrology" },
     { property: "og:description", content: "Per-product compliance status, inspection history and flagged label declarations under the 2011 rules." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },

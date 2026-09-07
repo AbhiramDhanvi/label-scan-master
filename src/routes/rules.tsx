@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/rules")({
   head: () => ({ meta: [
-    { title: "Legal Limits, Units and Products | Metrograph" },
+    { title: "Legal Limits, Units and Products | Pramana Legal Metrology" },
     { name: "description", content: "Stored mandatory declarations, minimum numeral heights in mm, measurement units and product records used to check packaged commodity labels under the 2011 rules." },
-    { property: "og:title", content: "Legal Limits, Units and Products | Metrograph" },
+    { property: "og:title", content: "Legal Limits, Units and Products | Pramana Legal Metrology" },
     { property: "og:description", content: "Stored declarations, numeral-height bands, units and products, with new entries added straight to the database." },
     { property: "og:type", content: "article" },
     { name: "twitter:card", content: "summary_large_image" },
