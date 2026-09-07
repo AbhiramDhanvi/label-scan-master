@@ -531,7 +531,7 @@ export function buildReport(input: {
 }) {
   const { batch, result } = input;
   const lines = [
-    "PRAMANA — SMART LEGAL METROLOGY INSPECTION REPORT",
+    "DHARMALENS — SMART LEGAL METROLOGY INSPECTION REPORT",
     "Legal Metrology (Packaged Commodities) Rules, 2011",
     "",
     "1. INSPECTION",

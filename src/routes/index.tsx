@@ -20,9 +20,9 @@ import { autoEnhance, preprocessImage, readOrientation } from "@/lib/image-prepr
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "New Inspection | Pramana Legal Metrology" },
+    { title: "New Inspection | DharmaLens Legal Metrology" },
     { name: "description", content: "Scan every face of a pre-packaged commodity, extract the printed declarations, validate them against the Packaged Commodities Rules, 2011 and record the evidence, online or offline." },
-    { property: "og:title", content: "New Inspection | Pramana Legal Metrology" },
+    { property: "og:title", content: "New Inspection | DharmaLens Legal Metrology" },
     { property: "og:description", content: "Multi-face package scanning, declaration extraction, rule validation and image evidence for legal metrology inspections." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
@@ -326,7 +326,7 @@ function Index() {
     const href = URL.createObjectURL(new Blob([body], { type: "text/plain" }));
     const anchor = document.createElement("a");
     anchor.href = href;
-    anchor.download = `pramana-report-${(batch.productCode || "inspection").replace(/\s+/g, "-").toLowerCase()}.txt`;
+    anchor.download = `dharmalens-report-${(batch.productCode || "inspection").replace(/\s+/g, "-").toLowerCase()}.txt`;
     anchor.click();
     URL.revokeObjectURL(href);
   };
