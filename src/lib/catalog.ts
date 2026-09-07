@@ -266,6 +266,9 @@ export const pushInspection = async (input: InspectionPayload) => {
       numeral_height_mm: input.numeralHeightMm,
       measured_source: input.measuredSource,
       status: input.status,
+      instrument_id: input.instrumentId,
+      resolution_mm: input.resolutionMm,
+      resolution_g: input.resolutionG,
     },
     { onConflict: "local_uid" },
   );
