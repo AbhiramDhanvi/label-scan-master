@@ -427,15 +427,28 @@ function Index() {
                   );
                 })}
               </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2.5">
+                <label className="cursor-pointer font-mono text-[11px] text-muted-foreground outline outline-border px-2 py-1 hover:text-foreground">
+                  ADD ALL FACES AT ONCE
+                  <input className="sr-only" type="file" accept="image/*" multiple onChange={onPickMany} />
+                </label>
+                <span className="font-mono text-[11px] text-muted-foreground">{FACES.filter((f) => !captures[f]).length > 0 ? `MISSING: ${FACES.filter((f) => !captures[f]).join(", ")}` : "ALL SIX FACES CAPTURED"}</span>
+              </div>
               <div className="border-t border-border p-4">
                 <Button variant="ink" className="w-full" disabled={capturedFaces.length === 0 || busy} onClick={runPipeline}>
-                  {busy ? <><Loader2 className="mr-2 size-4 animate-spin" />Processing package</> : "Step 3 — Run detection and extraction"}
+                  {busy ? <><Loader2 className="mr-2 size-4 animate-spin" />Processing package</> : `Step 3 — Read ${capturedFaces.length} face${capturedFaces.length === 1 ? "" : "s"} and merge`}
                 </Button>
+                {readings.length > 0 && (
+                  <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+                    MERGED FROM {readings.length} FACE{readings.length === 1 ? "" : "S"}: {readings.map((r) => `${r.face} ${r.regions.length} regions`).join(" · ")}
+                  </p>
+                )}
                 {progress && <p className="mt-3 font-mono text-[11px] text-muted-foreground">{progress}…</p>}
                 {notice && <p className="mt-3 text-[13px] text-muted-foreground">{notice}</p>}
                 {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
                 {limits.isError && <p className="mt-3 text-[13px] text-destructive">The stored legal limits could not be loaded.</p>}
               </div>
+
             </section>
 
             <section className="bg-card outline outline-border">
