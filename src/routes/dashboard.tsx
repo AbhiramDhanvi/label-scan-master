@@ -138,6 +138,57 @@ function Dashboard() {
               {history.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No inspections recorded yet.</li>}
               </ul>
             </section>
+
+            <section className="bg-card outline outline-border">
+              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">MOST COMMON VIOLATIONS</h2></div>
+              <ul className="divide-y divide-border/70 text-[13px]">{topViolations.map(([code, count]) => (
+                <li key={code} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-[11px]">{code}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">{count}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{label(code)}</p>
+                  <span className="mt-1 block h-1 bg-border"><span className="block h-1 bg-foreground" style={{ width: `${(count / topViolations[0]![1]) * 100}%` }} /></span>
+                </li>
+              ))}
+              {topViolations.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No violations recorded yet.</li>}
+              </ul>
+            </section>
+
+            <section className="bg-card outline outline-border">
+              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">HIGH-RISK PRODUCTS</h2></div>
+              <ul className="divide-y divide-border/70 text-[13px]">{highRisk.map((row) => (
+                <li key={row.code} className="px-4 py-2.5">
+                  <p className="font-medium">{nameFor(row.code)}</p>
+                  <p className="text-xs text-muted-foreground">{row.violations} of {row.total} inspections non-compliant · last {row.last || "—"}</p>
+                </li>
+              ))}
+              {highRisk.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No repeat violations.</li>}
+              </ul>
+            </section>
+
+            <section className="bg-card outline outline-border">
+              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">REINSPECTION TRACKING</h2></div>
+              <ul className="divide-y divide-border/70 text-[13px]">{reinspections.map((r) => (
+                <li key={r.id} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{nameFor(r.productCode)}</span>
+                      <span className="block text-xs text-muted-foreground">Due {r.dueOn}{r.dueOn < today && r.state === "PENDING" ? " · overdue" : ""} · {r.action}</span>
+                    </span>
+                    <span className={`font-mono text-[10px] ${r.state === "RESOLVED" ? "text-pass" : r.state === "STILL NON-COMPLIANT" ? "text-destructive" : "text-warning"}`}>{r.state}</span>
+                  </div>
+                  {r.state === "PENDING" && (
+                    <div className="mt-2 flex gap-2">
+                      <button className="px-2 py-1 font-mono text-[10px] outline outline-border hover:bg-muted" onClick={() => void mark(r.id, "RESOLVED")}>MARK RESOLVED</button>
+                      <button className="px-2 py-1 font-mono text-[10px] outline outline-border hover:bg-muted" onClick={() => void mark(r.id, "STILL NON-COMPLIANT")}>STILL NON-COMPLIANT</button>
+                    </div>
+                  )}
+                </li>
+              ))}
+              {reinspections.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No reinspections scheduled.</li>}
+              </ul>
+            </section>
           </div>
         </div>
 
