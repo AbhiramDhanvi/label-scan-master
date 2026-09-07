@@ -193,7 +193,13 @@ export const quantityUnit = (value: string | null): string => {
 /** Parses an Indian MRP string such as "₹125", "Rs. 1,25,000/-", "2500/-" into a number. */
 export const parseMRP = (value: string | null): number | null => {
   if (!value) return null;
-  const cleaned = value.replace(/[₹,Rs.\s\-/]+/gi, "").replace(/,/g, "");
+  const cleaned = value
+    .replace(/[₹]/g, "")
+    .replace(/rs\.?/gi, "")
+    .replace(/\/-/g, "")
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .trim();
   const match = cleaned.match(/(\d+(?:\.\d+)?)/);
   if (!match) return null;
   const amount = Number.parseFloat(match[1]!);
