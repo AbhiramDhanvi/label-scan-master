@@ -238,6 +238,9 @@ export type InspectionPayload = {
   numeralHeightMm: number | null;
   measuredSource: string;
   status: string;
+  instrumentId: string | null;
+  resolutionMm: number | null;
+  resolutionG: number | null;
 };
 
 /** Pushes one inspection to the server. Safe to retry: the local UID is unique. */
