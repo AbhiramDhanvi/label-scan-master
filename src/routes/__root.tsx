@@ -134,13 +134,6 @@ function Header() {
             activeProps={{ className: "bg-foreground text-background px-2.5 py-1.5 text-xs font-medium" }}
             inactiveProps={{ className: "text-muted-foreground hover:text-foreground px-2.5 py-1.5 text-xs font-medium" }}
           >
-            Console
-          </Link>
-          <Link
-            to="/inspect"
-            activeProps={{ className: "bg-foreground text-background px-2.5 py-1.5 text-xs font-medium" }}
-            inactiveProps={{ className: "text-muted-foreground hover:text-foreground px-2.5 py-1.5 text-xs font-medium" }}
-          >
             New inspection
           </Link>
           <Link
@@ -157,12 +150,6 @@ function Header() {
           >
             Legal limits
           </Link>
-          <span className="mx-1 h-4 w-px bg-border" />
-          <Link to="/" hash="queue" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Queue</Link>
-          <Link to="/" hash="scan" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Scan</Link>
-          <Link to="/" hash="declarations" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Declarations</Link>
-          <Link to="/" hash="findings" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">Findings</Link>
-          <Link to="/" hash="history" className="px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">History</Link>
         </nav>
         <div className="ml-auto flex items-center gap-4">
           <span className="grid size-7 place-items-center bg-background font-mono text-[10px] outline outline-border">AO</span>
