@@ -110,8 +110,8 @@ function Index() {
       title: l.title,
       minHeightMm: l.minHeightMm,
       maxQuantityBase: l.maxQuantityBase,
-      toleranceValue: (l as { tolerance_value?: number | null }).tolerance_value ?? null,
-      tolerancePercent: (l as { tolerance_percent?: number | null }).tolerance_percent ?? null,
+      toleranceValue: l.toleranceValue,
+      tolerancePercent: l.tolerancePercent,
     }));
   }, [limits.data]);
 
