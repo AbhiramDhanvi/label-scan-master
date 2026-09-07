@@ -135,31 +135,51 @@ function Index() {
 
   const capturedFaces = FACES.filter((face) => captures[face]);
 
+  const ingest = async (face: FaceKey, picked: File) => {
+    const url = URL.createObjectURL(picked);
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("The image file could not be read."));
+      reader.readAsDataURL(picked);
+    });
+    const orientation = await readOrientation(picked).catch(() => 1);
+    setCaptures((prev) => ({
+      ...prev,
+      [face]: { file: picked, url, dataUrl, orientation, enhance: false },
+    }));
+    setReadings((prev) => prev.filter((r) => r.face !== face));
+  };
+
   const onPick = (face: FaceKey) => async (event: ChangeEvent<HTMLInputElement>) => {
     const picked = event.target.files?.[0];
+    event.target.value = "";
     if (!picked) return;
     setError(undefined);
     setNotice(undefined);
-    const url = URL.createObjectURL(picked);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = String(reader.result);
-      const orientation = await readOrientation(picked).catch(() => 1);
-      setCaptures((prev) => ({
-        ...prev,
-        [face]: {
-          file: picked,
-          url,
-          dataUrl,
-          orientation,
-          enhance: false,
-        },
-      }));
-      setReadings((prev) => prev.filter((r) => r.face !== face));
-    };
-    reader.readAsDataURL(picked);
-    event.target.value = "";
+    await ingest(face, picked);
   };
+
+  /** Assigns several photographs at once, filling the empty face slots in
+   *  FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM order so a full package can be
+   *  loaded in one step. */
+  const onPickMany = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
+    setError(undefined);
+    const free = FACES.filter((face) => !captures[face]);
+    const slots = free.length >= files.length ? free : FACES;
+    let assigned = 0;
+    for (const [index, file] of files.entries()) {
+      const face = slots[index];
+      if (!face) break;
+      await ingest(face, file);
+      assigned += 1;
+    }
+    setNotice(`${assigned} photograph${assigned === 1 ? "" : "s"} assigned to ${slots.slice(0, assigned).join(", ")}.`);
+  };
+
 
   const toggleEnhance = async (face: FaceKey) => {
     const shot = captures[face];
