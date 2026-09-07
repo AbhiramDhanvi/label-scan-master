@@ -135,31 +135,51 @@ function Index() {
 
   const capturedFaces = FACES.filter((face) => captures[face]);
 
+  const ingest = async (face: FaceKey, picked: File) => {
+    const url = URL.createObjectURL(picked);
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("The image file could not be read."));
+      reader.readAsDataURL(picked);
+    });
+    const orientation = await readOrientation(picked).catch(() => 1);
+    setCaptures((prev) => ({
+      ...prev,
+      [face]: { file: picked, url, dataUrl, orientation, enhance: false },
+    }));
+    setReadings((prev) => prev.filter((r) => r.face !== face));
+  };
+
   const onPick = (face: FaceKey) => async (event: ChangeEvent<HTMLInputElement>) => {
     const picked = event.target.files?.[0];
+    event.target.value = "";
     if (!picked) return;
     setError(undefined);
     setNotice(undefined);
-    const url = URL.createObjectURL(picked);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = String(reader.result);
-      const orientation = await readOrientation(picked).catch(() => 1);
-      setCaptures((prev) => ({
-        ...prev,
-        [face]: {
-          file: picked,
-          url,
-          dataUrl,
-          orientation,
-          enhance: false,
-        },
-      }));
-      setReadings((prev) => prev.filter((r) => r.face !== face));
-    };
-    reader.readAsDataURL(picked);
-    event.target.value = "";
+    await ingest(face, picked);
   };
+
+  /** Assigns several photographs at once, filling the empty face slots in
+   *  FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM order so a full package can be
+   *  loaded in one step. */
+  const onPickMany = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
+    setError(undefined);
+    const free = FACES.filter((face) => !captures[face]);
+    const slots = free.length >= files.length ? free : FACES;
+    let assigned = 0;
+    for (const [index, file] of files.entries()) {
+      const face = slots[index];
+      if (!face) break;
+      await ingest(face, file);
+      assigned += 1;
+    }
+    setNotice(`${assigned} photograph${assigned === 1 ? "" : "s"} assigned to ${slots.slice(0, assigned).join(", ")}.`);
+  };
+
 
   const toggleEnhance = async (face: FaceKey) => {
     const shot = captures[face];
@@ -407,15 +427,28 @@ function Index() {
                   );
                 })}
               </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2.5">
+                <label className="cursor-pointer font-mono text-[11px] text-muted-foreground outline outline-border px-2 py-1 hover:text-foreground">
+                  ADD ALL FACES AT ONCE
+                  <input className="sr-only" type="file" accept="image/*" multiple onChange={onPickMany} />
+                </label>
+                <span className="font-mono text-[11px] text-muted-foreground">{FACES.filter((f) => !captures[f]).length > 0 ? `MISSING: ${FACES.filter((f) => !captures[f]).join(", ")}` : "ALL SIX FACES CAPTURED"}</span>
+              </div>
               <div className="border-t border-border p-4">
                 <Button variant="ink" className="w-full" disabled={capturedFaces.length === 0 || busy} onClick={runPipeline}>
-                  {busy ? <><Loader2 className="mr-2 size-4 animate-spin" />Processing package</> : "Step 3 — Run detection and extraction"}
+                  {busy ? <><Loader2 className="mr-2 size-4 animate-spin" />Processing package</> : `Step 3 — Read ${capturedFaces.length} face${capturedFaces.length === 1 ? "" : "s"} and merge`}
                 </Button>
+                {readings.length > 0 && (
+                  <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+                    MERGED FROM {readings.length} FACE{readings.length === 1 ? "" : "S"}: {readings.map((r) => `${r.face} ${r.regions.length} regions`).join(" · ")}
+                  </p>
+                )}
                 {progress && <p className="mt-3 font-mono text-[11px] text-muted-foreground">{progress}…</p>}
                 {notice && <p className="mt-3 text-[13px] text-muted-foreground">{notice}</p>}
                 {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
                 {limits.isError && <p className="mt-3 text-[13px] text-destructive">The stored legal limits could not be loaded.</p>}
               </div>
+
             </section>
 
             <section className="bg-card outline outline-border">
