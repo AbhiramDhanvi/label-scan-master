@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { bandForQuantity, declarations, products, verdictClass } from "@/data/lmpc";
+import { verdictClass } from "@/data/lmpc";
+import { bandFor, fetchInspections, fetchLimits, fetchProducts } from "@/lib/catalog";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [
     { title: "Compliance Dashboard | Metrograph" },
-    { name: "description", content: "Compliance status for every packaged commodity, past inspection history and the label declarations currently flagged." },
+    { name: "description", content: "Compliance status for every stored packaged commodity, its recorded inspection history and the label declarations currently flagged." },
     { property: "og:title", content: "Compliance Dashboard | Metrograph" },
     { property: "og:description", content: "Per-product compliance status, inspection history and flagged label declarations under the 2011 rules." },
     { property: "og:type", content: "website" },
@@ -14,42 +16,51 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-const label = (code: string) => declarations.find((d) => d.code === code)?.declaration ?? code;
-
 const order = { FAIL: 0, REVIEW: 1, PASS: 2 } as const;
 
 function Dashboard() {
+  const productsQuery = useQuery({ queryKey: ["lm_products"], queryFn: fetchProducts });
+  const limitsQuery = useQuery({ queryKey: ["lm_limits"], queryFn: fetchLimits });
+  const historyQuery = useQuery({ queryKey: ["lm_inspections"], queryFn: fetchInspections });
+
+  const products = productsQuery.data ?? [];
+  const limits = limitsQuery.data ?? [];
+  const history = historyQuery.data ?? [];
+
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"ALL" | "PASS" | "REVIEW" | "FAIL">("ALL");
   const [sort, setSort] = useState<"severity" | "recent" | "product" | "mrp">("severity");
+
+  const label = (code: string) => limits.find((l) => l.code === code)?.title ?? code;
+
   const rows = useMemo(() => {
-    const latest = (p: (typeof products)[number]) => p.inspections[0]?.date ?? "";
+    const latest = (code: string) => history.find((h) => h.productCode === code)?.inspectedOn ?? "";
     return products
       .filter((p) => `${p.code} ${p.product} ${p.category}`.toLowerCase().includes(query.toLowerCase()))
       .filter((p) => status === "ALL" || p.verdict === status)
       .slice()
       .sort((a, b) =>
-        sort === "recent" ? latest(b).localeCompare(latest(a))
+        sort === "recent" ? latest(b.code).localeCompare(latest(a.code))
         : sort === "product" ? a.product.localeCompare(b.product)
         : sort === "mrp" ? b.mrp - a.mrp
         : order[a.verdict] - order[b.verdict],
       );
-  }, [query, status, sort]);
+  }, [products, history, query, status, sort]);
+
   const counts = {
     PASS: products.filter((p) => p.verdict === "PASS").length,
     FAIL: products.filter((p) => p.verdict === "FAIL").length,
     REVIEW: products.filter((p) => p.verdict === "REVIEW").length,
   };
-  const history = products
-    .flatMap((p) => p.inspections.map((i) => ({ ...i, product: p.product, code: p.code })))
-    .sort((a, b) => b.date.localeCompare(a.date));
   const flagged = products.filter((p) => p.flagged.length > 0);
+  const nameFor = (code: string) => products.find((p) => p.code === code)?.product ?? code;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-7xl px-5 py-10">
         <p className="font-mono text-[11px] text-muted-foreground">RULES 2011 / PORTFOLIO STATUS</p>
         <h1 className="mt-1 font-mono text-2xl font-semibold">Compliance dashboard</h1>
+        {productsQuery.isError && <p className="mt-3 text-[13px] text-destructive">The product records could not be loaded.</p>}
 
         <div className="mt-6 grid grid-cols-3 gap-4">
           {(["PASS", "REVIEW", "FAIL"] as const).map((key) => (
@@ -88,10 +99,12 @@ function Dashboard() {
                     <td className="px-3 py-3 text-muted-foreground">{p.category}</td>
                     <td className="px-3 py-3 font-mono">{p.netQuantity}</td>
                     <td className="px-3 py-3 font-mono">₹{p.mrp.toFixed(2)}</td>
-                    <td className="px-3 py-3 font-mono text-muted-foreground">{bandForQuantity(p.quantityBase).minHeightMm} mm</td>
+                    <td className="px-3 py-3 font-mono text-muted-foreground">{bandFor(limits, p.quantityBase)?.minHeightMm ?? "—"} mm</td>
                     <td className={`px-4 py-3 font-mono text-[11px] font-semibold ${verdictClass(p.verdict)}`}><span className="mr-1.5 inline-block size-2 bg-current" />{p.verdict}</td>
                   </tr>
-                ))}</tbody>
+                ))}
+                {rows.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-muted-foreground">{productsQuery.isLoading ? "Loading product records." : "No products match this filter."}</td></tr>}
+                </tbody>
               </table>
             </div>
           </section>
@@ -109,22 +122,26 @@ function Dashboard() {
                     </p>
                   ))}
                 </li>
-              ))}</ul>
+              ))}
+              {flagged.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">Nothing flagged.</li>}
+              </ul>
             </section>
 
             <section className="bg-card outline outline-border">
               <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">INSPECTION HISTORY</h2></div>
-              <ul className="divide-y divide-border/70 text-[13px]">{history.map((h, index) => (
-                <li key={`${h.code}-${h.date}-${index}`} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span><span className="font-mono text-[11px] text-muted-foreground">{h.date}</span> <span className="ml-2">{h.product}</span><span className="block text-[11px] text-muted-foreground">Officer {h.officer}</span></span>
+              <ul className="divide-y divide-border/70 text-[13px]">{history.map((h) => (
+                <li key={h.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span><span className="font-mono text-[11px] text-muted-foreground">{h.inspectedOn}</span> <span className="ml-2">{nameFor(h.productCode)}</span><span className="block text-[11px] text-muted-foreground">{h.officer ? `Officer ${h.officer}` : h.productCode}</span></span>
                   <span className={`font-mono text-[10px] font-semibold ${verdictClass(h.verdict)}`}>{h.verdict}</span>
                 </li>
-              ))}</ul>
+              ))}
+              {history.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No inspections recorded yet.</li>}
+              </ul>
             </section>
           </div>
         </div>
 
-        <p className="mt-8 font-mono text-[11px]"><Link to="/" className="text-muted-foreground hover:text-foreground">Back to inspection console</Link> · <Link to="/rules" className="text-muted-foreground hover:text-foreground">Legal limits</Link></p>
+        <p className="mt-8 font-mono text-[11px]"><Link to="/" className="text-muted-foreground hover:text-foreground">New inspection</Link> · <Link to="/rules" className="text-muted-foreground hover:text-foreground">Legal limits</Link></p>
       </main>
     </div>
   );
