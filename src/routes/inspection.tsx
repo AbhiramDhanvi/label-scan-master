@@ -18,7 +18,7 @@ import {
 import { flushQueue, newId, pending, readQueue, saveLocal, type LocalInspection } from "@/lib/offline";
 import { autoEnhance, preprocessImage, readOrientation } from "@/lib/image-preprocess";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/inspection")({
   head: () => ({ meta: [
     { title: "New Inspection | DharmaLens Legal Metrology" },
     { name: "description", content: "Scan every face of a pre-packaged commodity, extract the printed declarations, validate them against the Packaged Commodities Rules, 2011 and record the evidence, online or offline." },
