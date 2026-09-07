@@ -18,43 +18,70 @@ export type Database = {
         Row: {
           batch_no: string
           created_at: string
+          declared_base: number | null
+          faces: Json
+          fields: Json
+          findings: Json
           flagged: string[]
           id: string
           inspected_on: string
           label_image_url: string | null
+          local_uid: string | null
           lot_size: string
+          measured_base: number | null
+          measured_source: string
           note: string
+          numeral_height_mm: number | null
           officer: string
           product_code: string
           site: string
+          status: string
           verdict: string
         }
         Insert: {
           batch_no?: string
           created_at?: string
+          declared_base?: number | null
+          faces?: Json
+          fields?: Json
+          findings?: Json
           flagged?: string[]
           id?: string
           inspected_on?: string
           label_image_url?: string | null
+          local_uid?: string | null
           lot_size?: string
+          measured_base?: number | null
+          measured_source?: string
           note?: string
+          numeral_height_mm?: number | null
           officer?: string
           product_code: string
           site?: string
+          status?: string
           verdict: string
         }
         Update: {
           batch_no?: string
           created_at?: string
+          declared_base?: number | null
+          faces?: Json
+          fields?: Json
+          findings?: Json
           flagged?: string[]
           id?: string
           inspected_on?: string
           label_image_url?: string | null
+          local_uid?: string | null
           lot_size?: string
+          measured_base?: number | null
+          measured_source?: string
           note?: string
+          numeral_height_mm?: number | null
           officer?: string
           product_code?: string
           site?: string
+          status?: string
           verdict?: string
         }
         Relationships: []
@@ -145,6 +172,47 @@ export type Database = {
           verdict?: string
         }
         Relationships: []
+      }
+      lm_reinspections: {
+        Row: {
+          action: string
+          created_at: string
+          due_on: string
+          id: string
+          inspection_id: string | null
+          note: string
+          product_code: string
+          state: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          due_on?: string
+          id?: string
+          inspection_id?: string | null
+          note?: string
+          product_code: string
+          state?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          due_on?: string
+          id?: string
+          inspection_id?: string | null
+          note?: string
+          product_code?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lm_reinspections_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "lm_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lm_units: {
         Row: {
