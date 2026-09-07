@@ -157,13 +157,14 @@ export const parseQuantity = (value: string | null): ParsedQuantity => {
     const base2 = toBase(unit2, amount2);
     const total = base1 + base2;
     const isCount = /pcs?|pieces?|units?|n\b/.test(unit1);
+    const outUnit = isCount ? "pcs" : /ml|l\b|ltr|litre/.test(unit1) ? "ml" : "g";
     return {
       value: total,
       unit: isCount ? "count" : /ml|l\b|ltr|litre/.test(unit1) ? "ml" : "g",
       raw,
       approx,
       compound: true,
-      note: `Compound quantity: ${amount1} ${unit1} + ${amount2} ${unit2} = ${total}.`,
+      note: `Compound quantity: ${amount1} ${unit1} + ${amount2} ${unit2} = ${total} ${outUnit}.`,
     };
   }
 
