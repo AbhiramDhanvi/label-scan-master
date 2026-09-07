@@ -135,13 +135,14 @@ export const parseQuantity = (value: string | null): ParsedQuantity => {
     const base = unit.startsWith("kg") || unit.startsWith("l") || unit.startsWith("ltr") || unit.startsWith("lit") ? amount * 1000 : amount;
     const total = count * base;
     const isCount = /pcs?|pieces?|units?|n\b/.test(unit);
+    const outUnit = isCount ? "pcs" : /ml|l\b|ltr|litre/.test(unit) ? "ml" : "g";
     return {
       value: total,
       unit: isCount ? "count" : /ml|l\b|ltr|litre/.test(unit) ? "ml" : "g",
       raw,
       approx,
       compound: true,
-      note: `Compound quantity: ${count} × ${amount} ${unit} = ${total} ${isCount ? "pcs" : unit}.`,
+      note: `Compound quantity: ${count} × ${amount} ${unit} = ${total} ${outUnit}.`,
     };
   }
 
