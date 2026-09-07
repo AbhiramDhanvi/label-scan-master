@@ -154,7 +154,6 @@ function Rules() {
                 </tr>
               ))}</tbody>
             </table>
-            <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">Heights are measured by calibrating against a reference card of fixed width 85.6 mm to obtain a pixel-to-millimetre ratio. With no reference object in frame, the field is routed to review rather than given a pass or fail.</p>
             <div className="grid grid-cols-1 gap-2 border-t border-border p-4 sm:grid-cols-2">
               <Field id="l-code" label="Rule code" value={limit.code} onChange={(v) => setLimit({ ...limit, code: v })} placeholder="LMPC-R6-XXX" />
               <div className="grid grid-cols-2 items-center gap-2">
