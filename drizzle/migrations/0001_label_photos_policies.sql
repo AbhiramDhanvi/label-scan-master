@@ -1,0 +1,2 @@
+CREATE POLICY "label photos readable" ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'label-photos');
+CREATE POLICY "label photos uploadable" ON storage.objects FOR INSERT TO anon, authenticated WITH CHECK (bucket_id = 'label-photos');

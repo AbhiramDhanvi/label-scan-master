@@ -14,7 +14,165 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lm_inspections: {
+        Row: {
+          batch_no: string
+          created_at: string
+          flagged: string[]
+          id: string
+          inspected_on: string
+          label_image_url: string | null
+          lot_size: string
+          note: string
+          officer: string
+          product_code: string
+          site: string
+          verdict: string
+        }
+        Insert: {
+          batch_no?: string
+          created_at?: string
+          flagged?: string[]
+          id?: string
+          inspected_on?: string
+          label_image_url?: string | null
+          lot_size?: string
+          note?: string
+          officer?: string
+          product_code: string
+          site?: string
+          verdict: string
+        }
+        Update: {
+          batch_no?: string
+          created_at?: string
+          flagged?: string[]
+          id?: string
+          inspected_on?: string
+          label_image_url?: string | null
+          lot_size?: string
+          note?: string
+          officer?: string
+          product_code?: string
+          site?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
+      lm_limits: {
+        Row: {
+          citation: string | null
+          code: string
+          created_at: string
+          id: string
+          kind: string
+          max_quantity_base: number | null
+          min_height_mm: number | null
+          requirement: string
+          title: string
+        }
+        Insert: {
+          citation?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          kind: string
+          max_quantity_base?: number | null
+          min_height_mm?: number | null
+          requirement: string
+          title: string
+        }
+        Update: {
+          citation?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          max_quantity_base?: number | null
+          min_height_mm?: number | null
+          requirement?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      lm_products: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          flagged: string[]
+          id: string
+          imported: boolean
+          label_image_url: string | null
+          mrp: number
+          net_quantity: string
+          note: string
+          product: string
+          quantity_base: number
+          unit_symbol: string
+          verdict: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          flagged?: string[]
+          id?: string
+          imported?: boolean
+          label_image_url?: string | null
+          mrp?: number
+          net_quantity: string
+          note?: string
+          product: string
+          quantity_base: number
+          unit_symbol?: string
+          verdict?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          flagged?: string[]
+          id?: string
+          imported?: boolean
+          label_image_url?: string | null
+          mrp?: number
+          net_quantity?: string
+          note?: string
+          product?: string
+          quantity_base?: number
+          unit_symbol?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
+      lm_units: {
+        Row: {
+          base_factor: number
+          created_at: string
+          id: string
+          kind: string
+          label: string
+          symbol: string
+        }
+        Insert: {
+          base_factor?: number
+          created_at?: string
+          id?: string
+          kind: string
+          label: string
+          symbol: string
+        }
+        Update: {
+          base_factor?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
