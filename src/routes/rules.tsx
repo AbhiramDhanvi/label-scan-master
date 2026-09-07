@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { amendments, penalties } from "@/data/lmpc";
 import { addLimit, addProduct, addUnit, fetchLimits, fetchProducts, fetchUnits } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 
