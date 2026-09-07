@@ -13,7 +13,7 @@ export type LocalInspection = {
   payload: InspectionPayload;
 };
 
-const KEY = "pramana.inspections.v1";
+const KEY = "dharmalens.inspections.v1";
 
 const canStore = () => typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
