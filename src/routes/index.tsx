@@ -5,7 +5,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CircleAlert, FileDown, Loader2, RefreshCw, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FACES, readFace, type Box, type FaceKey, type FaceReading } from "@/lib/ocr.functions";
-import { buildReport, evaluateInspection, statusClass, statusLabel, type Status } from "@/lib/compliance";
+import { buildReport, evaluateInspection, statusClass, statusLabel, type LimitRow } from "@/lib/compliance";
 import {
   createReinspection,
   fetchLimits,
@@ -16,6 +16,7 @@ import {
   type InspectionPayload,
 } from "@/lib/catalog";
 import { flushQueue, newId, pending, readQueue, saveLocal, type LocalInspection } from "@/lib/offline";
+import { autoEnhance, preprocessImage, readOrientation } from "@/lib/image-preprocess";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -31,8 +32,26 @@ export const Route = createFileRoute("/")({
 
 const field = "bg-background px-2.5 py-1.5 text-[13px] outline outline-border";
 const legend = "font-mono text-[10px] uppercase text-muted-foreground";
+const select = `${field} appearance-none`;
 
-type Captured = { file: File; url: string; dataUrl: string };
+const MEASUREMENT_SOURCES = [
+  "NOT MEASURED",
+  "CALIBRATED GAUGE",
+  "WEIGHING SCALE",
+  "REFERENCE CARD",
+  "VISUAL ESTIMATE",
+];
+
+type Captured = {
+  file: File;
+  url: string;
+  dataUrl: string;
+  enhancedUrl?: string;
+  enhancedDataUrl?: string;
+  orientation?: number;
+  enhance: boolean;
+  corners?: { x: number; y: number }[];
+};
 
 function Index() {
   const runFace = useServerFn(readFace);
@@ -61,6 +80,10 @@ function Index() {
     imported: false,
     measuredMm: "",
     measuredQuantity: "",
+    instrumentId: "",
+    measurementSource: "NOT MEASURED",
+    resolutionMm: "",
+    resolutionG: "",
   });
 
   useEffect(() => {
@@ -79,6 +102,19 @@ function Index() {
 
   const known = catalog.data?.find((p) => p.code === batch.productCode);
 
+  const limitRows: LimitRow[] | undefined = useMemo(() => {
+    if (!limits.data) return undefined;
+    return limits.data.map((l) => ({
+      code: l.code,
+      kind: l.kind,
+      title: l.title,
+      minHeightMm: l.minHeightMm,
+      maxQuantityBase: l.maxQuantityBase,
+      toleranceValue: (l as { tolerance_value?: number | null }).tolerance_value ?? null,
+      tolerancePercent: (l as { tolerance_percent?: number | null }).tolerance_percent ?? null,
+    }));
+  }, [limits.data]);
+
   const result = useMemo(
     () =>
       readings.length > 0
@@ -87,26 +123,61 @@ function Index() {
             imported: batch.imported,
             measuredMm: batch.measuredMm ? Number.parseFloat(batch.measuredMm) : undefined,
             measuredQuantity: batch.measuredQuantity ? Number.parseFloat(batch.measuredQuantity) : undefined,
+            resolutionMm: batch.resolutionMm ? Number.parseFloat(batch.resolutionMm) : undefined,
+            resolutionG: batch.resolutionG ? Number.parseFloat(batch.resolutionG) : undefined,
+            measurementSource: batch.measurementSource,
+            instrumentId: batch.instrumentId,
+            limits: limitRows,
           })
         : undefined,
-    [readings, batch.imported, batch.measuredMm, batch.measuredQuantity],
+    [readings, batch, limitRows],
   );
 
   const capturedFaces = FACES.filter((face) => captures[face]);
 
-  const onPick = (face: FaceKey) => (event: ChangeEvent<HTMLInputElement>) => {
+  const onPick = (face: FaceKey) => async (event: ChangeEvent<HTMLInputElement>) => {
     const picked = event.target.files?.[0];
     if (!picked) return;
     setError(undefined);
     setNotice(undefined);
     const url = URL.createObjectURL(picked);
     const reader = new FileReader();
-    reader.onload = () => {
-      setCaptures((prev) => ({ ...prev, [face]: { file: picked, url, dataUrl: String(reader.result) } }));
+    reader.onload = async () => {
+      const dataUrl = String(reader.result);
+      const orientation = await readOrientation(picked).catch(() => 1);
+      setCaptures((prev) => ({
+        ...prev,
+        [face]: {
+          file: picked,
+          url,
+          dataUrl,
+          orientation,
+          enhance: false,
+        },
+      }));
       setReadings((prev) => prev.filter((r) => r.face !== face));
     };
     reader.readAsDataURL(picked);
     event.target.value = "";
+  };
+
+  const toggleEnhance = async (face: FaceKey) => {
+    const shot = captures[face];
+    if (!shot) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (shot.enhance) {
+        setCaptures((prev) => ({ ...prev, [face]: { ...shot, enhance: false, enhancedDataUrl: undefined, enhancedUrl: undefined } }));
+      } else {
+        const enhancedDataUrl = await autoEnhance(shot.file, shot.orientation);
+        setCaptures((prev) => ({ ...prev, [face]: { ...shot, enhance: true, enhancedDataUrl } }));
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Image enhancement failed.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const removeFace = (face: FaceKey) => {
@@ -126,13 +197,13 @@ function Index() {
     try {
       for (const face of capturedFaces) {
         setProgress(`Detecting declarations and running text recognition on the ${face} face`);
-        const reading = await runFace({ data: { face, imageDataUrl: captures[face]!.dataUrl } });
+        const shot = captures[face]!;
+        const imageDataUrl = shot.enhance && shot.enhancedDataUrl ? shot.enhancedDataUrl : shot.dataUrl;
+        const reading = await runFace({ data: { face, imageDataUrl } });
         collected.push(reading);
         setReadings([...collected]);
       }
       setProgress(undefined);
-      const detectedCode = collected.map((r) => r.fields.genericName?.value).find(Boolean);
-      if (!batch.productCode && detectedCode) setBatch((prev) => ({ ...prev, productCode: prev.productCode }));
       setNotice(`${collected.length} face${collected.length === 1 ? "" : "s"} processed. Review the extracted declarations below.`);
     } catch (cause) {
       setProgress(undefined);
@@ -192,6 +263,9 @@ function Index() {
         numeralHeightMm: batch.measuredMm ? Number.parseFloat(batch.measuredMm) : null,
         measuredSource: result.measurement.source,
         status: violations.length > 0 ? "OPEN" : "CLOSED",
+        instrumentId: batch.instrumentId || null,
+        resolutionMm: batch.resolutionMm ? Number.parseFloat(batch.resolutionMm) : null,
+        resolutionG: batch.resolutionG ? Number.parseFloat(batch.resolutionG) : null,
       };
 
       saveLocal(payload);
@@ -230,7 +304,25 @@ function Index() {
 
   const download = () => {
     if (!result) return;
-    const body = buildReport({ inspectionId: uid, batch, result, readings, synced: Boolean(savedUid) && online });
+    const body = buildReport({
+      inspectionId: uid,
+      batch: {
+        productCode: batch.productCode,
+        batchNo: batch.batchNo,
+        lotSize: batch.lotSize,
+        site: batch.site,
+        officer: batch.officer,
+        date: batch.date,
+        imported: batch.imported,
+        measuredMm: batch.measuredMm,
+        measuredQuantity: batch.measuredQuantity,
+        instrumentId: batch.instrumentId,
+        measurementSource: batch.measurementSource,
+      },
+      result,
+      readings,
+      synced: Boolean(savedUid) && online,
+    });
     const href = URL.createObjectURL(new Blob([body], { type: "text/plain" }));
     const anchor = document.createElement("a");
     anchor.href = href;
@@ -294,14 +386,21 @@ function Index() {
                   return (
                     <div key={face} className="outline outline-border">
                       <label className="grid aspect-[4/3] cursor-pointer place-items-center overflow-hidden bg-background hover:bg-muted">
-                        {shot ? <img src={shot.url} alt={`${face} face of the inspected package`} className="h-full w-full object-cover" /> : <Upload className="size-4 text-muted-foreground" />}
+                        {shot ? <img src={shot.enhance && shot.enhancedDataUrl ? shot.enhancedDataUrl : shot.url} alt={`${face} face of the inspected package`} className="h-full w-full object-cover" /> : <Upload className="size-4 text-muted-foreground" />}
                         <input className="sr-only" type="file" accept="image/*" capture="environment" onChange={onPick(face)} />
                       </label>
                       <div className="flex items-center justify-between gap-1 border-t border-border px-2 py-1.5">
                         <span className="font-mono text-[10px]">{face}</span>
                         <span className="flex items-center gap-1">
                           {reading && <span className="font-mono text-[10px] text-muted-foreground">{reading.quality.score}%</span>}
-                          {shot && <button aria-label={`Remove the ${face} photograph`} onClick={() => removeFace(face)}><Trash2 className="size-3 text-muted-foreground hover:text-destructive" /></button>}
+                          {shot && (
+                            <>
+                              <button aria-label={`Enhance the ${face} photograph`} onClick={() => void toggleEnhance(face)} title={shot.enhance ? "Use original" : "Enhance for OCR"}>
+                                <span className={`text-[10px] ${shot.enhance ? "text-pass" : "text-muted-foreground"} hover:text-foreground`}>{shot.enhance ? "ENH" : "RAW"}</span>
+                              </button>
+                              <button aria-label={`Remove the ${face} photograph`} onClick={() => removeFace(face)}><Trash2 className="size-3 text-muted-foreground hover:text-destructive" /></button>
+                            </>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -322,17 +421,28 @@ function Index() {
             <section className="bg-card outline outline-border">
               <Head title="STEP 6 — MEASUREMENT" meta={result?.measurement.source ?? "NOT MEASURED"} />
               <div className="grid grid-cols-2 items-center gap-2 p-4">
+                <label className={legend} htmlFor="source">Measurement source</label>
+                <select id="source" className={select} value={batch.measurementSource} onChange={(e) => setBatch({ ...batch, measurementSource: e.target.value })}>
+                  {MEASUREMENT_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <label className={legend} htmlFor="instrument">Instrument ID</label>
+                <input id="instrument" className={field} value={batch.instrumentId} onChange={(e) => setBatch({ ...batch, instrumentId: e.target.value })} placeholder="gauge / scale ID" />
                 <label className={legend} htmlFor="mm">Numeral height (mm)</label>
                 <input id="mm" inputMode="decimal" className={field} value={batch.measuredMm} onChange={(e) => setBatch({ ...batch, measuredMm: e.target.value })} placeholder="calibrated gauge" />
+                <label className={legend} htmlFor="resmm">Resolution (mm)</label>
+                <input id="resmm" inputMode="decimal" className={field} value={batch.resolutionMm} onChange={(e) => setBatch({ ...batch, resolutionMm: e.target.value })} placeholder="smallest division" />
                 <label className={legend} htmlFor="qty">Actual quantity ({result?.measurement.unit ?? "g"})</label>
                 <input id="qty" inputMode="decimal" className={field} value={batch.measuredQuantity} onChange={(e) => setBatch({ ...batch, measuredQuantity: e.target.value })} placeholder="weighed value" />
-                <p className="col-span-2 text-[12px] text-muted-foreground">No scale is connected, so both values are recorded as a manual measurement.</p>
+                <label className={legend} htmlFor="resg">Resolution ({result?.measurement.unit ?? "g"})</label>
+                <input id="resg" inputMode="decimal" className={field} value={batch.resolutionG} onChange={(e) => setBatch({ ...batch, resolutionG: e.target.value })} placeholder="smallest division" />
+                <p className="col-span-2 text-[12px] text-muted-foreground">No scale is connected, so values are recorded as a manual measurement with instrument uncertainty.</p>
                 {result && (
                   <dl className="col-span-2 mt-1 space-y-1 text-[13px]">
                     <Row label="Declared" value={result.measurement.declaredBase === null ? "not detected" : `${result.measurement.declaredBase} ${result.measurement.unit}`} />
                     <Row label="Measured" value={result.measurement.measuredBase === null ? "not measured" : `${result.measurement.measuredBase} ${result.measurement.unit}`} />
                     <Row label="Difference" value={result.measurement.difference === null ? "—" : `${result.measurement.difference > 0 ? "+" : ""}${result.measurement.difference.toFixed(1)} ${result.measurement.unit}`} />
-                    <Row label="Permissible error" value={result.measurement.toleranceBase === null ? "—" : `± ${result.measurement.toleranceBase.toFixed(1)} ${result.measurement.unit}`} />
+                    <Row label="Uncertainty" value={result.measurement.uncertaintyG === null ? "—" : `±${result.measurement.uncertaintyG.toFixed(2)} ${result.measurement.unit}`} />
+                    <Row label="Permissible error" value={result.measurement.toleranceBase === null ? "—" : `±${result.measurement.toleranceBase.toFixed(1)} ${result.measurement.unit}`} />
                     <div className="flex justify-between gap-3">
                       <dt className={legend}>Status</dt>
                       <dd className={`font-mono text-[11px] font-semibold ${statusClass(result.measurement.status)}`}>{statusLabel(result.measurement.status)}</dd>
@@ -389,6 +499,9 @@ function Index() {
                     {statusLabel(result.status)}
                     <span className="ml-2 font-normal text-muted-foreground">stored as {result.verdict}</span>
                   </div>
+                  {result.conflicts.length > 0 && (
+                    <p className="flex items-start gap-2 border-b border-border px-4 py-2.5 text-[12px] text-warning"><CircleAlert className="mt-0.5 size-3.5 shrink-0" />{result.conflicts.map((c) => `${c.label}: ${c.readings.map((r) => `${r.face}=${r.value}`).join(", ")}`).join(" · ")}</p>
+                  )}
                   {result.qualityWarnings.length > 0 && (
                     <p className="flex items-start gap-2 border-b border-border px-4 py-2.5 text-[12px] text-warning"><CircleAlert className="mt-0.5 size-3.5 shrink-0" />{result.qualityWarnings.join(" · ")}</p>
                   )}

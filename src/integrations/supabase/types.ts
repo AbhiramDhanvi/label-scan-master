@@ -25,6 +25,7 @@ export type Database = {
           flagged: string[]
           id: string
           inspected_on: string
+          instrument_id: string | null
           label_image_url: string | null
           local_uid: string | null
           lot_size: string
@@ -34,6 +35,8 @@ export type Database = {
           numeral_height_mm: number | null
           officer: string
           product_code: string
+          resolution_g: number | null
+          resolution_mm: number | null
           site: string
           status: string
           verdict: string
@@ -48,6 +51,7 @@ export type Database = {
           flagged?: string[]
           id?: string
           inspected_on?: string
+          instrument_id?: string | null
           label_image_url?: string | null
           local_uid?: string | null
           lot_size?: string
@@ -57,6 +61,8 @@ export type Database = {
           numeral_height_mm?: number | null
           officer?: string
           product_code: string
+          resolution_g?: number | null
+          resolution_mm?: number | null
           site?: string
           status?: string
           verdict: string
@@ -71,6 +77,7 @@ export type Database = {
           flagged?: string[]
           id?: string
           inspected_on?: string
+          instrument_id?: string | null
           label_image_url?: string | null
           local_uid?: string | null
           lot_size?: string
@@ -80,6 +87,8 @@ export type Database = {
           numeral_height_mm?: number | null
           officer?: string
           product_code?: string
+          resolution_g?: number | null
+          resolution_mm?: number | null
           site?: string
           status?: string
           verdict?: string
@@ -97,6 +106,8 @@ export type Database = {
           min_height_mm: number | null
           requirement: string
           title: string
+          tolerance_percent: number | null
+          tolerance_value: number | null
         }
         Insert: {
           citation?: string | null
@@ -108,6 +119,8 @@ export type Database = {
           min_height_mm?: number | null
           requirement: string
           title: string
+          tolerance_percent?: number | null
+          tolerance_value?: number | null
         }
         Update: {
           citation?: string | null
@@ -119,6 +132,8 @@ export type Database = {
           min_height_mm?: number | null
           requirement?: string
           title?: string
+          tolerance_percent?: number | null
+          tolerance_value?: number | null
         }
         Relationships: []
       }
