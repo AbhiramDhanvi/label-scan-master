@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { verdictClass } from "@/data/lmpc";
-import { bandFor, fetchInspections, fetchLimits, fetchProducts } from "@/lib/catalog";
+import { bandFor, fetchInspections, fetchLimits, fetchProducts, fetchReinspections, setReinspectionState } from "@/lib/catalog";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [
@@ -22,6 +22,7 @@ function Dashboard() {
   const productsQuery = useQuery({ queryKey: ["lm_products"], queryFn: fetchProducts });
   const limitsQuery = useQuery({ queryKey: ["lm_limits"], queryFn: fetchLimits });
   const historyQuery = useQuery({ queryKey: ["lm_inspections"], queryFn: fetchInspections });
+  const reinspectionsQuery = useQuery({ queryKey: ["lm_reinspections"], queryFn: fetchReinspections });
 
   const products = productsQuery.data ?? [];
   const limits = limitsQuery.data ?? [];
