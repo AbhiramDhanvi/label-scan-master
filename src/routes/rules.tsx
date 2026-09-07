@@ -66,7 +66,7 @@ function Rules() {
       <main className="mx-auto max-w-5xl px-5 py-10">
         <p className="font-mono text-[11px] text-muted-foreground">RULES 2011 / LEGAL LIMITS</p>
         <h1 className="mt-1 font-mono text-2xl font-semibold">Legal limits, units and products</h1>
-        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Every inspection is compared against the records stored here. Add a new product, unit or limit with the forms below; nothing needs to be uploaded again. Figures follow the Legal Metrology (Packaged Commodities) Rules, 2011 and its amendments; verify against the current Gazette notification before enforcement action.</p>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Reference data used for every inspection. Add products, units or limits below.</p>
 
         {status && <p className="mt-4 text-[13px] text-muted-foreground">{status}</p>}
         {error && <p className="mt-4 text-[13px] text-destructive">{error}</p>}
