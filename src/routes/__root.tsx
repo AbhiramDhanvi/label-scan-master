@@ -123,7 +123,7 @@ function Header() {
         <Link to="/" className="flex items-center gap-2.5">
           <span className="grid size-8 place-items-center bg-foreground font-mono text-[11px] font-semibold text-background">LM</span>
           <div className="leading-tight">
-            <p className="font-mono text-[11px] font-semibold">METROGRAPH<span className="text-primary">.</span></p>
+            <p className="font-mono text-[11px] font-semibold">PRAMANA<span className="text-primary">.</span></p>
             <p className="text-[10px] text-muted-foreground">Legal Metrology Inspection Console</p>
           </div>
         </Link>
