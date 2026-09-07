@@ -129,8 +129,7 @@ function Header() {
         </Link>
         <nav className="ml-4 hidden items-center gap-1 md:flex">
           <Link
-            to="/"
-            activeOptions={{ exact: true }}
+            to="/inspection"
             activeProps={{ className: "bg-foreground text-background px-2.5 py-1.5 text-xs font-medium" }}
             inactiveProps={{ className: "text-muted-foreground hover:text-foreground px-2.5 py-1.5 text-xs font-medium" }}
           >
