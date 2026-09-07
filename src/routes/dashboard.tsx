@@ -52,7 +52,7 @@ function Dashboard() {
     FAIL: products.filter((p) => p.verdict === "FAIL").length,
     REVIEW: products.filter((p) => p.verdict === "REVIEW").length,
   };
-  const flagged = products.filter((p) => p.flagged.length > 0);
+  
   const nameFor = (code: string) => products.find((p) => p.code === code)?.product ?? code;
   const today = new Date().toISOString().slice(0, 10);
 
