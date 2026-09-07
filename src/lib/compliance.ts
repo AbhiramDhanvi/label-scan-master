@@ -1,4 +1,4 @@
-import { bandForQuantity, declarations, type FontBand, type Verdict } from "@/data/lmpc";
+import { bandForQuantity as staticBandForQuantity, declarations, type FontBand, type Verdict } from "@/data/lmpc";
 import type { Box, FaceKey, FaceReading, FieldKey } from "@/lib/ocr.functions";
 
 /** Assessment status used by the rule engine. It is mapped onto the stored
@@ -15,6 +15,7 @@ export const statusClass = (status: Status) =>
   status === "COMPLIANT" ? "text-pass" : status === "POTENTIAL" ? "text-destructive" : status === "REVIEW" ? "text-warning" : "text-muted-foreground";
 
 export const LOW_CONFIDENCE = 70;
+export const MIN_REGIONS_PER_FACE = 3;
 
 export type ExtractedField = {
   key: FieldKey;
@@ -46,8 +47,10 @@ export type Measurement = {
   unit: string;
   difference: number | null;
   toleranceBase: number | null;
+  uncertaintyG: number | null;
+  uncertaintyMm: number | null;
   status: Status;
-  source: "MANUAL MEASUREMENT" | "NOT MEASURED";
+  source: string;
   note: string;
 };
 
@@ -64,6 +67,34 @@ export type InspectionResult = {
   languages: string[];
   facesRead: FaceKey[];
   qualityWarnings: string[];
+  conflicts: Conflict[];
+  instrumentId: string | null;
+  measurementSource: string;
+};
+
+export type LimitRow = {
+  code: string;
+  kind: string;
+  title?: string;
+  minHeightMm: number | null;
+  maxQuantityBase: number | null;
+  toleranceValue: number | null;
+  tolerancePercent: number | null;
+};
+
+export type ParsedQuantity = {
+  value: number | null;
+  unit: "g" | "ml" | "count" | null;
+  raw: string | null;
+  approx: boolean;
+  compound: boolean;
+  note: string;
+};
+
+export type Conflict = {
+  key: FieldKey;
+  label: string;
+  readings: { face: FaceKey; value: string; confidence: number }[];
 };
 
 const FIELD_LABELS: Record<FieldKey, string> = {
@@ -81,24 +112,116 @@ const FIELD_LABELS: Record<FieldKey, string> = {
 
 const FIELD_ORDER = Object.keys(FIELD_LABELS) as FieldKey[];
 
-/** Parses "1 kg", "500 ml", "250g", "2 L" into grams or millilitres. */
-export const parseQuantity = (value: string | null): number | null => {
-  if (!value) return null;
-  const match = value.replace(/,/g, "").match(/([\d.]+)\s*(kg|g|gm|grams?|l|ltr|litres?|ml)\b/i);
-  if (!match) return null;
+const normalizeText = (value: string | null) =>
+  (value ?? "")
+    .toLowerCase()
+    .replace(/[\s,\-_./]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** Parses "1 kg", "500 ml", "250g", "2 L", "5 pcs", "2 x 1 L", "~1 kg",
+ *  "500 g + 50 g free" into grams, millilitres or counts. */
+export const parseQuantity = (value: string | null): ParsedQuantity => {
+  if (!value) return { value: null, unit: null, raw: null, approx: false, compound: false, note: "Not detected." };
+  const raw = value.trim();
+  const approx = /\b(approx|approximately|~|about|around|nearly)\b/i.test(raw);
+
+  // Compound: "2 x 1 L" or "2 * 1 kg" or "500 g + 50 g free".
+  const compoundMatch = raw.match(/(\d+(?:\.\d+)?)\s*[x×*]\s*([\d.,]+)\s*(kg|g|gm|grams?|l|ltr|litres?|ml|pcs?|pieces?|units?)/i);
+  if (compoundMatch) {
+    const count = Number.parseFloat(compoundMatch[1]!);
+    const amount = Number.parseFloat(compoundMatch[2]!.replace(/,/g, ""));
+    const unit = compoundMatch[3]!.toLowerCase();
+    const base = unit.startsWith("kg") || unit.startsWith("l") || unit.startsWith("ltr") || unit.startsWith("lit") ? amount * 1000 : amount;
+    const total = count * base;
+    const isCount = /pcs?|pieces?|units?|n\b/.test(unit);
+    const outUnit = isCount ? "pcs" : /ml|l\b|ltr|litre/.test(unit) ? "ml" : "g";
+    return {
+      value: total,
+      unit: isCount ? "count" : /ml|l\b|ltr|litre/.test(unit) ? "ml" : "g",
+      raw,
+      approx,
+      compound: true,
+      note: `Compound quantity: ${count} × ${amount} ${unit} = ${total} ${outUnit}.`,
+    };
+  }
+
+  const plusMatch = raw.match(/([\d.,]+)\s*(kg|g|gm|grams?|l|ltr|litres?|ml|pcs?|pieces?|units?)\s*\+\s*([\d.,]+)\s*(kg|g|gm|grams?|l|ltr|litres?|ml|pcs?|pieces?|units?)/i);
+  if (plusMatch) {
+    const amount1 = Number.parseFloat(plusMatch[1]!.replace(/,/g, ""));
+    const unit1 = plusMatch[2]!.toLowerCase();
+    const amount2 = Number.parseFloat(plusMatch[3]!.replace(/,/g, ""));
+    const unit2 = plusMatch[4]!.toLowerCase();
+    const toBase = (u: string, a: number) => (u.startsWith("kg") || u.startsWith("l") || u.startsWith("ltr") || u.startsWith("lit") ? a * 1000 : a);
+    const base1 = toBase(unit1, amount1);
+    const base2 = toBase(unit2, amount2);
+    const total = base1 + base2;
+    const isCount = /pcs?|pieces?|units?|n\b/.test(unit1);
+    const outUnit = isCount ? "pcs" : /ml|l\b|ltr|litre/.test(unit1) ? "ml" : "g";
+    return {
+      value: total,
+      unit: isCount ? "count" : /ml|l\b|ltr|litre/.test(unit1) ? "ml" : "g",
+      raw,
+      approx,
+      compound: true,
+      note: `Compound quantity: ${amount1} ${unit1} + ${amount2} ${unit2} = ${total} ${outUnit}.`,
+    };
+  }
+
+  const match = raw.replace(/,/g, "").match(/([\d.]+)\s*(kg|g|gm|grams?|l|ltr|litres?|ml|pcs?|pieces?|units?|n)\b/i);
+  if (!match) return { value: null, unit: null, raw, approx, compound: false, note: "No quantity pattern recognised." };
   const amount = Number.parseFloat(match[1]!);
-  if (Number.isNaN(amount)) return null;
+  if (Number.isNaN(amount)) return { value: null, unit: null, raw, approx, compound: false, note: "Numeric part could not be parsed." };
   const unit = match[2]!.toLowerCase();
-  if (unit === "kg" || unit === "l" || unit === "ltr" || unit.startsWith("lit")) return amount * 1000;
-  return amount;
+  const isCount = /pcs?|pieces?|units?|n\b/.test(unit);
+  if (isCount) return { value: amount, unit: "count", raw, approx, compound: false, note: `Count unit: ${amount} pcs.` };
+  const base = unit.startsWith("kg") || unit === "l" || unit.startsWith("ltr") || unit.startsWith("lit") ? amount * 1000 : amount;
+  return {
+    value: base,
+    unit: /ml|l\b|ltr|litre/.test(unit) ? "ml" : "g",
+    raw,
+    approx,
+    compound: false,
+    note: `${amount} ${unit} = ${base} ${/ml|l\b|ltr|litre/.test(unit) ? "ml" : "g"}.`,
+  };
 };
 
-export const quantityUnit = (value: string | null): string =>
-  value && /ml|l\b|ltr|litre/i.test(value) ? "ml" : "g";
+export const quantityUnit = (value: string | null): string => {
+  const parsed = parseQuantity(value);
+  if (parsed.unit) return parsed.unit;
+  return value && /ml|l\b|ltr|litre/i.test(value) ? "ml" : "g";
+};
+
+/** Parses an Indian MRP string such as "₹125", "Rs. 1,25,000/-", "2500/-" into a number. */
+export const parseMRP = (value: string | null): number | null => {
+  if (!value) return null;
+  const cleaned = value
+    .replace(/[₹]/g, "")
+    .replace(/rs\.?/gi, "")
+    .replace(/\/-/g, "")
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+  const match = cleaned.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const amount = Number.parseFloat(match[1]!);
+  return Number.isNaN(amount) ? null : amount;
+};
 
 /** Maximum permissible error bands (Rule 2011 read with the Third Schedule),
- *  expressed against the declared quantity in g or ml. */
-export const toleranceFor = (declaredBase: number): number => {
+ *  expressed against the declared quantity in g or ml. Falls back to stored
+ *  legal limits when they are supplied. */
+export const toleranceFor = (declaredBase: number, limits?: LimitRow[]): number => {
+  if (limits?.length) {
+    const rows = limits
+      .filter((l) => l.kind === "tolerance")
+      .sort((a, b) => (a.maxQuantityBase ?? Infinity) - (b.maxQuantityBase ?? Infinity));
+    const row = rows.find((r) => declaredBase <= (r.maxQuantityBase ?? Infinity)) ?? rows[rows.length - 1];
+    if (row) {
+      if (row.toleranceValue !== null && row.toleranceValue !== undefined) return row.toleranceValue;
+      if (row.tolerancePercent !== null && row.tolerancePercent !== undefined) return declaredBase * row.tolerancePercent;
+    }
+  }
   if (declaredBase <= 50) return declaredBase * 0.09;
   if (declaredBase <= 100) return 4.5;
   if (declaredBase <= 200) return declaredBase * 0.045;
@@ -108,26 +231,62 @@ export const toleranceFor = (declaredBase: number): number => {
   return declaredBase * 0.015;
 };
 
+/** Selects the Rule 7 numeral-height band from stored limits when available. */
+export const bandForQuantity = (grammesOrMl: number, limits?: LimitRow[]): FontBand => {
+  if (limits?.length) {
+    const rows = limits
+      .filter((l) => l.kind === "font_band")
+      .sort((a, b) => (a.maxQuantityBase ?? Infinity) - (b.maxQuantityBase ?? Infinity));
+    const row = rows.find((r) => grammesOrMl <= (r.maxQuantityBase ?? Infinity)) ?? rows[rows.length - 1];
+    if (row) {
+      return {
+        code: row.code,
+        band: row.title ?? row.code,
+        minHeightMm: row.minHeightMm ?? 0,
+        maxQuantity: row.maxQuantityBase ?? Infinity,
+      };
+    }
+  }
+  return staticBandForQuantity(grammesOrMl);
+};
+
+/** Detects conflicting values for the same declaration across captured faces. */
+export function findConflicts(readings: FaceReading[]): Conflict[] {
+  const conflicts: Conflict[] = [];
+  for (const key of FIELD_ORDER) {
+    const values = readings
+      .filter((r) => r.fields[key]?.value)
+      .map((r) => ({ face: r.face, value: r.fields[key]!.value.trim(), confidence: r.fields[key]!.confidence }));
+    if (values.length < 2) continue;
+    const normalized = values.map((v) => normalizeText(v.value));
+    const distinct = Array.from(new Set(normalized));
+    if (distinct.length > 1) {
+      conflicts.push({ key, label: FIELD_LABELS[key], readings: values });
+    }
+  }
+  return conflicts;
+}
+
 /** Merges every captured face into one field set. A declaration is only ever
  *  reported as missing after all captured faces have been searched. */
 export function mergeFaces(readings: FaceReading[]): ExtractedField[] {
   return FIELD_ORDER.map((key) => {
-    let best: { read: FaceReading["fields"][FieldKey]; face: FaceKey } | null = null;
+    let best: { read: NonNullable<FaceReading["fields"][FieldKey]>; face: FaceKey } | null = null;
     for (const reading of readings) {
       const read = reading.fields[key];
       if (!read) continue;
-      if (!best || read.confidence > (best.read?.confidence ?? 0)) best = { read, face: reading.face };
+      if (!best || read.confidence > (best.read.confidence ?? 0)) best = { read, face: reading.face };
     }
-    const value = best?.read?.value ?? null;
-    const confidence = best?.read?.confidence ?? 0;
+    const value = best?.read.value ?? null;
+    const confidence = best?.read.confidence ?? 0;
     return {
       key,
       label: FIELD_LABELS[key],
       value,
       confidence,
-      language: best?.read?.language ?? "—",
+      language: best?.read.language ?? "—",
       face: best?.face ?? null,
-      box: best?.read?.box ?? null,
+      box: best?.read.box ?? null,
       detection: value === null ? "NOT DETECTED" : confidence < LOW_CONFIDENCE ? "LOW CONFIDENCE" : "DETECTED",
     } satisfies ExtractedField;
   });
@@ -140,22 +299,31 @@ export function evaluateInspection(input: {
   imported: boolean;
   measuredMm?: number | undefined;
   measuredQuantity?: number | undefined;
+  resolutionMm?: number | undefined;
+  resolutionG?: number | undefined;
+  measurementSource?: string | undefined;
+  instrumentId?: string | undefined;
+  limits?: LimitRow[] | undefined;
 }): InspectionResult {
   const fields = mergeFaces(input.readings);
   const get = (key: FieldKey) => fields.find((f) => f.key === key)!;
 
-  const declaredBase = parseQuantity(get("netQuantity").value);
-  const unit = quantityUnit(get("netQuantity").value);
-  const band = declaredBase === null ? null : bandForQuantity(declaredBase);
+  const parsedQty = parseQuantity(get("netQuantity").value);
+  const declaredBase = parsedQty.value;
+  const unit = parsedQty.unit ?? "g";
+  const band = declaredBase === null ? null : bandForQuantity(declaredBase, input.limits);
+  const conflicts = findConflicts(input.readings);
 
   const findings: Finding[] = [];
 
   const push = (code: string, source: ExtractedField, expected: string, ok: boolean, failReason: string, extra?: { status?: Status; detected?: string }) => {
     const meta = ruleMeta(code);
     const lowConfidence = source.detection === "LOW CONFIDENCE";
-    const status: Status =
+    const conflict = conflicts.find((c) => c.key === code as FieldKey);
+    let status: Status =
       extra?.status ??
       (source.value === null ? "POTENTIAL" : !ok ? "POTENTIAL" : lowConfidence ? "REVIEW" : "COMPLIANT");
+    if (conflict && status === "COMPLIANT") status = "REVIEW";
     findings.push({
       code,
       declaration: meta?.declaration ?? source.label,
@@ -167,7 +335,9 @@ export function evaluateInspection(input: {
         status === "COMPLIANT"
           ? "Declaration detected and legible."
           : status === "REVIEW"
-            ? `Read at ${source.confidence}% confidence. Verify against the package.`
+            ? conflict
+              ? `Conflicting values across faces: ${conflict.readings.map((r) => `${r.face}=${r.value}`).join(", ")}. Verify against the package.`
+              : `Read at ${source.confidence}% confidence. Verify against the package.`
             : source.value === null
               ? failReason
               : failReason,
@@ -193,19 +363,25 @@ export function evaluateInspection(input: {
     get("netQuantity"),
     "Net quantity as a numeral with a standard unit (g, kg, ml, L or count)",
     declaredBase !== null,
-    "Net quantity not detected as a numeral with a standard unit.",
+    parsedQty.note?.includes("No quantity pattern")
+      ? "Net quantity not detected as a numeral with a standard unit."
+      : `Net quantity parsed as ${declaredBase ?? "—"} ${unit}. ${parsedQty.note}`,
+    declaredBase !== null && parsedQty.approx ? { status: "REVIEW", detected: `${get("netQuantity").value} (approximate)` } : undefined,
   );
 
   const mrp = get("mrp");
   const tax = get("taxClause");
+  const mrpAmount = parseMRP(mrp.value);
   push(
     "LMPC-R6-MRP",
     mrp,
     "Single retail sale price with the wording \"inclusive of all taxes\"",
-    mrp.value !== null && tax.value !== null,
+    mrp.value !== null && tax.value !== null && mrpAmount !== null,
     mrp.value === null
       ? "Retail sale price not detected on any captured face."
-      : "\"Inclusive of all taxes\" wording not detected next to the printed price.",
+      : mrpAmount === null
+        ? "Retail sale price detected but could not be read as a number."
+        : "\"Inclusive of all taxes\" wording not detected next to the printed price.",
     mrp.value !== null && tax.value === null ? { status: "POTENTIAL", detected: `${mrp.value} (tax wording not detected)` } : undefined,
   );
 
@@ -252,51 +428,73 @@ export function evaluateInspection(input: {
     });
   }
 
-  // Rule 7 numeral height.
+  // Rule 7 numeral height with instrument uncertainty.
   const measuredMm = input.measuredMm;
+  const resolutionMm = input.resolutionMm;
+  const uncertaintyMm = typeof resolutionMm === "number" && !Number.isNaN(resolutionMm) ? resolutionMm / 2 : 0.5;
   const heightStatus: Status =
     band === null || measuredMm === undefined || Number.isNaN(measuredMm)
       ? "REVIEW"
-      : measuredMm >= band.minHeightMm
+      : measuredMm - uncertaintyMm >= band.minHeightMm
         ? "COMPLIANT"
-        : "POTENTIAL";
+        : measuredMm + uncertaintyMm < band.minHeightMm
+          ? "POTENTIAL"
+          : "REVIEW";
   const heightReason =
     band === null
       ? "Band cannot be selected because the net quantity was not detected."
       : measuredMm === undefined || Number.isNaN(measuredMm)
         ? "Numeral height not measured. Measure with a calibrated gauge or the reference card."
-        : measuredMm >= band.minHeightMm
-          ? `Measured ${measuredMm} mm against a minimum of ${band.minHeightMm} mm.`
-          : `Measured ${measuredMm} mm against a minimum of ${band.minHeightMm} mm.`;
+        : measuredMm - uncertaintyMm >= band.minHeightMm
+          ? `Measured ${measuredMm}±${uncertaintyMm} mm against a minimum of ${band.minHeightMm} mm.`
+          : measuredMm + uncertaintyMm < band.minHeightMm
+            ? `Measured ${measuredMm}±${uncertaintyMm} mm against a minimum of ${band.minHeightMm} mm.`
+            : `Measured ${measuredMm}±${uncertaintyMm} mm is within the instrument uncertainty of the ${band.minHeightMm} mm minimum.`;
 
-  // Physical quantity verification.
+  // Physical quantity verification with uncertainty.
   const measuredQuantity = input.measuredQuantity;
-  const tolerance = declaredBase === null ? null : toleranceFor(declaredBase);
+  const resolutionG = input.resolutionG;
+  const uncertaintyG = typeof resolutionG === "number" && !Number.isNaN(resolutionG) ? resolutionG / 2 : null;
+  const tolerance = declaredBase === null ? null : toleranceFor(declaredBase, input.limits);
   const difference = declaredBase !== null && measuredQuantity !== undefined && !Number.isNaN(measuredQuantity) ? measuredQuantity - declaredBase : null;
+  const source = input.measurementSource && input.measurementSource !== "NOT MEASURED" ? input.measurementSource : "NOT MEASURED";
+
+  let measurementStatus: Status;
+  let measurementNote: string;
+  if (difference === null || tolerance === null || measuredQuantity === undefined || Number.isNaN(measuredQuantity) || declaredBase === null) {
+    measurementStatus = "REVIEW";
+    measurementNote = "Actual quantity not measured, so the maximum permissible error could not be applied.";
+  } else {
+    const lowerBound = uncertaintyG !== null ? measuredQuantity - uncertaintyG : measuredQuantity;
+    const upperBound = uncertaintyG !== null ? measuredQuantity + uncertaintyG : measuredQuantity;
+    if (lowerBound < declaredBase - tolerance) {
+      measurementStatus = "POTENTIAL";
+      measurementNote = `Shortfall of ${Math.abs(difference).toFixed(1)} ${unit} exceeds the permissible error of ${tolerance.toFixed(1)} ${unit}.`;
+    } else if (upperBound >= declaredBase - tolerance) {
+      measurementStatus = "COMPLIANT";
+      measurementNote = `Within the permissible error of ${tolerance.toFixed(1)} ${unit}.`;
+    } else {
+      measurementStatus = "REVIEW";
+      measurementNote = `Measured value is within the instrument uncertainty band around the tolerance limit.`;
+    }
+  }
+
   const measurement: Measurement = {
     declaredBase,
     measuredBase: measuredQuantity !== undefined && !Number.isNaN(measuredQuantity) ? measuredQuantity : null,
     unit,
     difference,
     toleranceBase: tolerance,
-    source: difference === null ? "NOT MEASURED" : "MANUAL MEASUREMENT",
-    status:
-      difference === null || tolerance === null
-        ? "REVIEW"
-        : difference < -tolerance
-          ? "POTENTIAL"
-          : "COMPLIANT",
-    note:
-      difference === null || tolerance === null
-        ? "Actual quantity not measured, so the maximum permissible error could not be applied."
-        : difference < -tolerance
-          ? `Shortfall of ${Math.abs(difference).toFixed(1)} ${unit} exceeds the permissible error of ${tolerance.toFixed(1)} ${unit}.`
-          : `Within the permissible error of ${tolerance.toFixed(1)} ${unit}.`,
+    uncertaintyG,
+    uncertaintyMm: typeof resolutionMm === "number" && !Number.isNaN(resolutionMm) ? resolutionMm / 2 : null,
+    source,
+    status: measurementStatus,
+    note: measurementNote,
   };
 
   const qualityWarnings = input.readings
-    .filter((r) => r.quality.blurred || r.quality.glare || r.quality.score < LOW_CONFIDENCE)
-    .map((r) => `${r.face}: ${[r.quality.blurred ? "blurred" : null, r.quality.glare ? "glare" : null, r.quality.score < LOW_CONFIDENCE ? `quality ${r.quality.score}%` : null].filter(Boolean).join(", ")}${r.quality.note ? ` (${r.quality.note})` : ""}`);
+    .filter((r) => r.quality.blurred || r.quality.glare || r.quality.score < LOW_CONFIDENCE || r.regions.length < MIN_REGIONS_PER_FACE)
+    .map((r) => `${r.face}: ${[r.quality.blurred ? "blurred" : null, r.quality.glare ? "glare" : null, r.quality.score < LOW_CONFIDENCE ? `quality ${r.quality.score}%` : null, r.regions.length < MIN_REGIONS_PER_FACE ? `only ${r.regions.length} regions` : null].filter(Boolean).join(", ")}${r.quality.note ? ` (${r.quality.note})` : ""}`);
 
   const all: Status[] = [...findings.map((f) => f.status), heightStatus, measurement.status];
   const status: Status = all.includes("POTENTIAL") ? "POTENTIAL" : all.includes("REVIEW") || qualityWarnings.length > 0 ? "REVIEW" : "COMPLIANT";
@@ -318,12 +516,15 @@ export function evaluateInspection(input: {
     languages,
     facesRead: input.readings.map((r) => r.face),
     qualityWarnings,
+    conflicts,
+    instrumentId: input.instrumentId ?? null,
+    measurementSource: source,
   };
 }
 
 export function buildReport(input: {
   inspectionId: string;
-  batch: { productCode: string; batchNo: string; lotSize: string; site: string; officer: string; date: string; imported: boolean; measuredMm: string };
+  batch: { productCode: string; batchNo: string; lotSize: string; site: string; officer: string; date: string; imported: boolean; measuredMm: string; measuredQuantity: string; instrumentId: string; measurementSource: string };
   result: InspectionResult;
   readings: FaceReading[];
   synced: boolean;
@@ -342,6 +543,8 @@ export function buildReport(input: {
     `Officer           : ${batch.officer || "not recorded"}`,
     `Date              : ${batch.date || "not recorded"}`,
     `Imported goods    : ${batch.imported ? "yes" : "no"}`,
+    `Instrument ID     : ${batch.instrumentId || "not recorded"}`,
+    `Measurement source: ${batch.measurementSource || "not recorded"}`,
     `Record state      : ${input.synced ? "synced to the server" : "held locally, pending sync"}`,
     "",
     "2. PACKAGE FACES SCANNED",
@@ -381,12 +584,19 @@ export function buildReport(input: {
     `Declared: ${result.measurement.declaredBase === null ? "not detected" : `${result.measurement.declaredBase} ${result.measurement.unit}`}`,
     `Measured: ${result.measurement.measuredBase === null ? "not measured" : `${result.measurement.measuredBase} ${result.measurement.unit} (${result.measurement.source})`}`,
     `Difference: ${result.measurement.difference === null ? "—" : `${result.measurement.difference > 0 ? "+" : ""}${result.measurement.difference.toFixed(1)} ${result.measurement.unit}`}`,
+    `Tolerance: ${result.measurement.toleranceBase === null ? "—" : `${result.measurement.toleranceBase.toFixed(1)} ${result.measurement.unit}`}`,
+    `Uncertainty: ${result.measurement.uncertaintyG === null ? "—" : `±${result.measurement.uncertaintyG.toFixed(2)} ${result.measurement.unit}`}`,
     `Status: ${statusLabel(result.measurement.status)} — ${result.measurement.note}`,
     "",
     "8. IMAGE QUALITY WARNINGS",
     result.qualityWarnings.join("\n") || "None.",
     "",
-    "9. TEXT READ FROM THE PACKAGE",
+    "9. CROSS-FACE CONFLICTS",
+    result.conflicts.length === 0
+      ? "None."
+      : result.conflicts.map((c) => `${c.label}: ${c.readings.map((r) => `${r.face}=${r.value}`).join(", ")}`).join("\n"),
+    "",
+    "10. TEXT READ FROM THE PACKAGE",
     ...input.readings.map((r) => `--- ${r.face} ---\n${r.rawText || "No text captured."}`),
     "",
     "This report is machine assisted. Final verification by an authorised officer is required before any enforcement action.",

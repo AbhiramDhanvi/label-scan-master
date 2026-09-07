@@ -26,6 +26,8 @@ export type CatalogLimit = {
   requirement: string;
   minHeightMm: number | null;
   maxQuantityBase: number | null;
+  toleranceValue: number | null;
+  tolerancePercent: number | null;
   citation: string | null;
 };
 
@@ -75,6 +77,8 @@ export const fetchLimits = async (): Promise<CatalogLimit[]> => {
     requirement: row.requirement,
     minHeightMm: row.min_height_mm === null ? null : Number(row.min_height_mm),
     maxQuantityBase: row.max_quantity_base === null ? null : Number(row.max_quantity_base),
+    toleranceValue: row.tolerance_value === null ? null : Number(row.tolerance_value),
+    tolerancePercent: row.tolerance_percent === null ? null : Number(row.tolerance_percent),
     citation: row.citation,
   }));
 };
@@ -131,6 +135,8 @@ export const addLimit = async (input: {
   requirement: string;
   minHeightMm?: number | null;
   maxQuantityBase?: number | null;
+  toleranceValue?: number | null;
+  tolerancePercent?: number | null;
   citation?: string | null;
 }) => {
   const { error } = await supabase.from("lm_limits").insert({
@@ -140,6 +146,8 @@ export const addLimit = async (input: {
     requirement: input.requirement,
     min_height_mm: input.minHeightMm ?? null,
     max_quantity_base: input.maxQuantityBase ?? null,
+    tolerance_value: input.toleranceValue ?? null,
+    tolerance_percent: input.tolerancePercent ?? null,
     citation: input.citation ?? null,
   });
   if (error) throw error;
@@ -234,6 +242,9 @@ export type InspectionPayload = {
   numeralHeightMm: number | null;
   measuredSource: string;
   status: string;
+  instrumentId: string | null;
+  resolutionMm: number | null;
+  resolutionG: number | null;
 };
 
 /** Pushes one inspection to the server. Safe to retry: the local UID is unique. */
@@ -259,6 +270,9 @@ export const pushInspection = async (input: InspectionPayload) => {
       numeral_height_mm: input.numeralHeightMm,
       measured_source: input.measuredSource,
       status: input.status,
+      instrument_id: input.instrumentId,
+      resolution_mm: input.resolutionMm,
+      resolution_g: input.resolutionG,
     },
     { onConflict: "local_uid" },
   );

@@ -128,7 +128,7 @@ const clampConfidence = (value: number | undefined) =>
 /** Reads one package face. The client calls this once per captured face so the
  *  inspector sees per-face progress and every reading keeps its own evidence. */
 export const readFace = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<FaceReading> => {
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("Label reading is not configured for this project.");
