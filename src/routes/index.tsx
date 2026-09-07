@@ -101,6 +101,11 @@ function Index() {
           note: outcome.fields.find((f) => f.verdict !== "PASS")?.reason ?? "All Rule 6 declarations present and legible.",
           flagged: outcome.fields.filter((f) => f.verdict !== "PASS").map((f) => f.code),
           labelImageUrl: photoUrl,
+          inspectedOn: batch.date,
+          officer: batch.officer,
+          site: batch.site,
+          batchNo: batch.batchNo,
+          lotSize: batch.lotSize,
         });
         await catalog.refetch();
         setSaved("Inspection saved to this product record.");

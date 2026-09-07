@@ -155,13 +155,60 @@ export const addUnit = async (input: { symbol: string; label: string; kind: stri
   if (error) throw error;
 };
 
+export type CatalogInspection = {
+  id: string;
+  productCode: string;
+  inspectedOn: string;
+  officer: string;
+  site: string;
+  verdict: Verdict;
+  note: string;
+  flagged: string[];
+};
+
+export const fetchInspections = async (): Promise<CatalogInspection[]> => {
+  const { data, error } = await supabase
+    .from("lm_inspections")
+    .select("*")
+    .order("inspected_on", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    productCode: row.product_code,
+    inspectedOn: row.inspected_on,
+    officer: row.officer,
+    site: row.site,
+    verdict: row.verdict as Verdict,
+    note: row.note,
+    flagged: row.flagged ?? [],
+  }));
+};
+
 export const recordInspection = async (input: {
   code: string;
   verdict: Verdict;
   note: string;
   flagged: string[];
   labelImageUrl?: string | null;
+  inspectedOn?: string;
+  officer?: string;
+  site?: string;
+  batchNo?: string;
+  lotSize?: string;
 }) => {
+  const { error: logError } = await supabase.from("lm_inspections").insert({
+    product_code: input.code,
+    inspected_on: input.inspectedOn || new Date().toISOString().slice(0, 10),
+    officer: input.officer ?? "",
+    site: input.site ?? "",
+    batch_no: input.batchNo ?? "",
+    lot_size: input.lotSize ?? "",
+    verdict: input.verdict,
+    note: input.note,
+    flagged: input.flagged,
+    label_image_url: input.labelImageUrl ?? null,
+  });
+  if (logError) throw logError;
   const { error } = await supabase
     .from("lm_products")
     .update({
