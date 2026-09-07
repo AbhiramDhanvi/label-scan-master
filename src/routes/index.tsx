@@ -538,6 +538,46 @@ function Index() {
                   {result.qualityWarnings.length > 0 && (
                     <p className="flex items-start gap-2 border-b border-border px-4 py-2.5 text-[12px] text-warning"><CircleAlert className="mt-0.5 size-3.5 shrink-0" />{result.qualityWarnings.join(" · ")}</p>
                   )}
+                  {result.findings.filter((f) => f.status === "POTENTIAL" || f.status === "REVIEW").length > 0 && (
+                    <div className="grid gap-3 border-b border-border p-4 sm:grid-cols-2">
+                      {result.findings
+                        .filter((f) => f.status === "POTENTIAL" || f.status === "REVIEW")
+                        .map((f) => (
+                          <div key={`card-${f.code}`} className="border border-border bg-muted/30 p-3">
+                            <p className={`flex items-center gap-2 font-mono text-[11px] font-semibold uppercase ${statusClass(f.status)}`}>
+                              <CircleAlert className="size-3.5 shrink-0" />
+                              {f.declaration}
+                            </p>
+                            <dl className="mt-2.5 space-y-1.5 text-[12px]">
+                              <div>
+                                <dt className="font-mono text-[10px] uppercase text-muted-foreground">Detected</dt>
+                                <dd className="font-medium">{f.detected || "nothing readable"}</dd>
+                              </div>
+                              <div>
+                                <dt className="font-mono text-[10px] uppercase text-muted-foreground">Rule</dt>
+                                <dd className="font-mono text-[11px]">{f.code}</dd>
+                              </div>
+                              <div>
+                                <dt className="font-mono text-[10px] uppercase text-muted-foreground">Issue</dt>
+                                <dd className="text-muted-foreground">{f.reason}</dd>
+                              </div>
+                            </dl>
+                            {f.face && captures[f.face] ? (
+                              <Button
+                                variant="ink"
+                                size="sm"
+                                className="mt-3 font-mono text-[10px]"
+                                onClick={() => setEvidence({ face: f.face!, box: f.box, caption: `${f.code} — ${f.detected}` })}
+                              >
+                                VIEW EVIDENCE
+                              </Button>
+                            ) : (
+                              <p className="mt-3 font-mono text-[10px] text-muted-foreground">NO IMAGE REGION CAPTURED</p>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
                   <div className="overflow-x-auto">
                     <table className="w-full text-[13px]">
                       <thead><tr className="border-b border-border text-left font-mono text-[10px] uppercase text-muted-foreground"><th className="px-4 py-2">Rule</th><th className="px-3 py-2">Requirement</th><th className="px-3 py-2">Detected</th><th className="px-3 py-2">Status</th><th className="px-4 py-2">Evidence</th></tr></thead>
