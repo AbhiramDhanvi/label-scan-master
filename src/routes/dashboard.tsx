@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { verdictClass } from "@/data/lmpc";
-import { bandFor, fetchInspections, fetchLimits, fetchProducts, fetchReinspections, setReinspectionState } from "@/lib/catalog";
+import { fetchInspections, fetchLimits, fetchProducts, fetchReinspections, setReinspectionState } from "@/lib/catalog";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [
@@ -59,41 +59,12 @@ function Dashboard() {
 
   const reinspections = reinspectionsQuery.data ?? [];
 
-  const topViolations = useMemo(() => {
-    const tally = new Map<string, number>();
-    for (const record of history) for (const code of record.flagged) tally.set(code, (tally.get(code) ?? 0) + 1);
-    return Array.from(tally.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [history]);
-
-  const highRisk = useMemo(() => {
-    const byCode = new Map<string, { code: string; total: number; violations: number; last: string }>();
-    for (const record of history) {
-      const row = byCode.get(record.productCode) ?? { code: record.productCode, total: 0, violations: 0, last: "" };
-      row.total += 1;
-      if (record.verdict !== "PASS") row.violations += 1;
-      if (record.inspectedOn > row.last) row.last = record.inspectedOn;
-      byCode.set(record.productCode, row);
-    }
-    return Array.from(byCode.values())
-      .filter((row) => row.violations >= 2 || (row.violations > 0 && row.violations === row.total && row.total > 1))
-      .sort((a, b) => b.violations - a.violations)
-      .slice(0, 6);
-  }, [history]);
-
   const kpis = [
-    { label: "Total inspections", value: history.length, tone: "" },
-    { label: "Compliant", value: history.filter((h) => h.verdict === "PASS").length, tone: "text-pass" },
-    { label: "Potential violations", value: history.filter((h) => h.verdict === "FAIL").length, tone: "text-destructive" },
-    { label: "Needs review", value: history.filter((h) => h.verdict === "REVIEW").length, tone: "text-warning" },
-    { label: "Pending reinspection", value: reinspections.filter((r) => r.state === "PENDING").length, tone: "text-warning" },
+    { label: "Products", value: products.length, tone: "" },
+    { label: "Compliant", value: counts.PASS, tone: "text-pass" },
+    { label: "Needs review", value: counts.REVIEW, tone: "text-warning" },
+    { label: "Violations", value: counts.FAIL, tone: "text-destructive" },
   ];
-
-  const alerts = [
-    ...history.filter((h) => h.verdict === "FAIL").slice(0, 3).map((h) => `Potential violation: ${nameFor(h.productCode)} on ${h.inspectedOn}`),
-    ...highRisk.slice(0, 2).map((row) => `Repeat violations: ${nameFor(row.code)} (${row.violations})`),
-    ...reinspections.filter((r) => r.state === "PENDING" && r.dueOn < today).slice(0, 2).map((r) => `Reinspection overdue: ${nameFor(r.productCode)} (due ${r.dueOn})`),
-    ...history.filter((h) => h.verdict === "REVIEW").slice(0, 2).map((h) => `Needs officer review: ${nameFor(h.productCode)} on ${h.inspectedOn}`),
-  ].slice(0, 6);
 
   const mark = async (id: string, state: string) => {
     await setReinspectionState(id, state);
@@ -107,7 +78,7 @@ function Dashboard() {
         <h1 className="mt-1 font-mono text-2xl font-semibold">Compliance dashboard</h1>
         {productsQuery.isError && <p className="mt-3 text-[13px] text-destructive">The product records could not be loaded.</p>}
 
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {kpis.map((kpi) => (
             <div key={kpi.label} className="bg-card px-4 py-3 outline outline-border">
               <p className="font-mono text-[10px] uppercase text-muted-foreground">{kpi.label}</p>
@@ -116,31 +87,12 @@ function Dashboard() {
           ))}
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-4">
-          {(["PASS", "REVIEW", "FAIL"] as const).map((key) => (
-            <div key={key} className="bg-card px-4 py-3 outline outline-border">
-              <p className="font-mono text-[10px] uppercase text-muted-foreground">{key}</p>
-              <p className={`mt-1 font-mono text-2xl font-semibold ${verdictClass(key)}`}>{counts[key]}</p>
-              <p className="text-[11px] text-muted-foreground">of {products.length} products</p>
-            </div>
-          ))}
-        </div>
-
-        {alerts.length > 0 && (
-          <section className="mt-4 bg-card outline outline-border">
-            <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">RECENT ALERTS</h2></div>
-            <ul className="divide-y divide-border/70 text-[13px]">
-              {alerts.map((alert) => <li key={alert} className="px-4 py-2">{alert}</li>)}
-            </ul>
-          </section>
-        )}
-
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">
           <section className="bg-card outline outline-border lg:col-span-8">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
               <h2 className="font-mono text-xs font-semibold">STATUS BY PRODUCT</h2>
               <div className="flex flex-wrap items-center gap-2">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code, product, category" className="w-52 bg-background px-2.5 py-1 text-[12px] outline outline-border" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product" className="w-44 bg-background px-2.5 py-1 text-[12px] outline outline-border" />
                 <div className="flex">{(["ALL", "FAIL", "REVIEW", "PASS"] as const).map((key) => (
                   <button key={key} type="button" onClick={() => setStatus(key)} className={`px-2 py-1 font-mono text-[10px] outline outline-border ${status === key ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>{key}</button>
                 ))}</div>
@@ -153,20 +105,17 @@ function Dashboard() {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-[13px]">
-                <thead><tr className="border-b border-border text-left font-mono text-[10px] uppercase text-muted-foreground"><th className="px-4 py-2">Code</th><th className="px-3 py-2">Product</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Net qty</th><th className="px-3 py-2">MRP</th><th className="px-3 py-2">Min numeral</th><th className="px-4 py-2">Status</th></tr></thead>
+              <table className="w-full min-w-[560px] text-[13px]">
+                <thead><tr className="border-b border-border text-left font-mono text-[10px] uppercase text-muted-foreground"><th className="px-4 py-2">Product</th><th className="px-3 py-2">Net qty</th><th className="px-3 py-2">MRP</th><th className="px-4 py-2">Status</th></tr></thead>
                 <tbody>{rows.map((p) => (
                   <tr key={p.code} className="border-b border-border/70 align-top hover:bg-background">
-                    <td className="px-4 py-3 font-mono text-xs">{p.code}</td>
-                    <td className="px-3 py-3"><p className="font-medium">{p.product}</p><p className="text-xs text-muted-foreground">{p.note}</p></td>
-                    <td className="px-3 py-3 text-muted-foreground">{p.category}</td>
+                    <td className="px-4 py-3"><p className="font-medium">{p.product}</p><p className="font-mono text-[11px] text-muted-foreground">{p.code}</p></td>
                     <td className="px-3 py-3 font-mono">{p.netQuantity}</td>
-                    <td className="px-3 py-3 font-mono">₹{p.mrp.toFixed(2)}</td>
-                    <td className="px-3 py-3 font-mono text-muted-foreground">{bandFor(limits, p.quantityBase)?.minHeightMm ?? "—"} mm</td>
-                    <td className={`px-4 py-3 font-mono text-[11px] font-semibold ${verdictClass(p.verdict)}`}><span className="mr-1.5 inline-block size-2 bg-current" />{p.verdict}</td>
+                    <td className="px-3 py-3 font-mono">Rs {p.mrp.toFixed(2)}</td>
+                    <td className={`px-4 py-3 font-mono text-[11px] font-semibold ${verdictClass(p.verdict)}`}>{p.verdict}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-muted-foreground">{productsQuery.isLoading ? "Loading product records." : "No products match this filter."}</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-muted-foreground">{productsQuery.isLoading ? "Loading product records." : "No products match this filter."}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -179,10 +128,7 @@ function Dashboard() {
                 <li key={p.code} className="px-4 py-3">
                   <p className="text-[13px] font-medium">{p.product}</p>
                   {p.flagged.map((code) => (
-                    <p key={code} className="mt-1 flex items-start gap-2 text-xs text-muted-foreground">
-                      <span className={`border border-current px-1.5 py-0.5 font-mono text-[10px] ${verdictClass(p.verdict)}`}>{code}</span>
-                      {label(code)}
-                    </p>
+                    <p key={code} className="mt-1 text-xs text-muted-foreground">{label(code)}</p>
                   ))}
                 </li>
               ))}
@@ -191,10 +137,10 @@ function Dashboard() {
             </section>
 
             <section className="bg-card outline outline-border">
-              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">INSPECTION HISTORY</h2></div>
-              <ul className="divide-y divide-border/70 text-[13px]">{history.map((h) => (
+              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">RECENT INSPECTIONS</h2></div>
+              <ul className="divide-y divide-border/70 text-[13px]">{history.slice(0, 6).map((h) => (
                 <li key={h.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span><span className="font-mono text-[11px] text-muted-foreground">{h.inspectedOn}</span> <span className="ml-2">{nameFor(h.productCode)}</span><span className="block text-[11px] text-muted-foreground">{h.officer ? `Officer ${h.officer}` : h.productCode}</span></span>
+                  <span><span className="font-mono text-[11px] text-muted-foreground">{h.inspectedOn}</span> <span className="ml-2">{nameFor(h.productCode)}</span></span>
                   <span className={`font-mono text-[10px] font-semibold ${verdictClass(h.verdict)}`}>{h.verdict}</span>
                 </li>
               ))}
@@ -202,56 +148,29 @@ function Dashboard() {
               </ul>
             </section>
 
-            <section className="bg-card outline outline-border">
-              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">MOST COMMON VIOLATIONS</h2></div>
-              <ul className="divide-y divide-border/70 text-[13px]">{topViolations.map(([code, count]) => (
-                <li key={code} className="px-4 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-[11px]">{code}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">{count}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{label(code)}</p>
-                  <span className="mt-1 block h-1 bg-border"><span className="block h-1 bg-foreground" style={{ width: `${(count / topViolations[0]![1]) * 100}%` }} /></span>
-                </li>
-              ))}
-              {topViolations.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No violations recorded yet.</li>}
-              </ul>
-            </section>
-
-            <section className="bg-card outline outline-border">
-              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">HIGH-RISK PRODUCTS</h2></div>
-              <ul className="divide-y divide-border/70 text-[13px]">{highRisk.map((row) => (
-                <li key={row.code} className="px-4 py-2.5">
-                  <p className="font-medium">{nameFor(row.code)}</p>
-                  <p className="text-xs text-muted-foreground">{row.violations} of {row.total} inspections non-compliant · last {row.last || "—"}</p>
-                </li>
-              ))}
-              {highRisk.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No repeat violations.</li>}
-              </ul>
-            </section>
-
-            <section className="bg-card outline outline-border">
-              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">REINSPECTION TRACKING</h2></div>
-              <ul className="divide-y divide-border/70 text-[13px]">{reinspections.map((r) => (
-                <li key={r.id} className="px-4 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="block font-medium">{nameFor(r.productCode)}</span>
-                      <span className="block text-xs text-muted-foreground">Due {r.dueOn}{r.dueOn < today && r.state === "PENDING" ? " · overdue" : ""} · {r.action}</span>
-                    </span>
-                    <span className={`font-mono text-[10px] ${r.state === "RESOLVED" ? "text-pass" : r.state === "STILL NON-COMPLIANT" ? "text-destructive" : "text-warning"}`}>{r.state}</span>
-                  </div>
-                  {r.state === "PENDING" && (
-                    <div className="mt-2 flex gap-2">
-                      <button className="px-2 py-1 font-mono text-[10px] outline outline-border hover:bg-muted" onClick={() => void mark(r.id, "RESOLVED")}>MARK RESOLVED</button>
-                      <button className="px-2 py-1 font-mono text-[10px] outline outline-border hover:bg-muted" onClick={() => void mark(r.id, "STILL NON-COMPLIANT")}>STILL NON-COMPLIANT</button>
+            {reinspections.length > 0 && (
+              <section className="bg-card outline outline-border">
+                <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">REINSPECTIONS</h2></div>
+                <ul className="divide-y divide-border/70 text-[13px]">{reinspections.map((r) => (
+                  <li key={r.id} className="px-4 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block font-medium">{nameFor(r.productCode)}</span>
+                        <span className="block text-xs text-muted-foreground">Due {r.dueOn}{r.dueOn < today && r.state === "PENDING" ? " · overdue" : ""}</span>
+                      </span>
+                      <span className={`font-mono text-[10px] ${r.state === "RESOLVED" ? "text-pass" : r.state === "STILL NON-COMPLIANT" ? "text-destructive" : "text-warning"}`}>{r.state}</span>
                     </div>
-                  )}
-                </li>
-              ))}
-              {reinspections.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No reinspections scheduled.</li>}
-              </ul>
-            </section>
+                    {r.state === "PENDING" && (
+                      <div className="mt-2 flex gap-2">
+                        <button className="px-2 py-1 font-mono text-[10px] outline outline-border hover:bg-muted" onClick={() => void mark(r.id, "RESOLVED")}>MARK RESOLVED</button>
+                        <button className="px-2 py-1 font-mono text-[10px] outline outline-border hover:bg-muted" onClick={() => void mark(r.id, "STILL NON-COMPLIANT")}>STILL NON-COMPLIANT</button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+                </ul>
+              </section>
+            )}
           </div>
         </div>
 
