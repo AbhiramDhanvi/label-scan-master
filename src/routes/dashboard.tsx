@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { verdictClass } from "@/data/lmpc";
@@ -30,7 +30,7 @@ function Dashboard() {
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"ALL" | "PASS" | "REVIEW" | "FAIL">("ALL");
-  const [sort, setSort] = useState<"severity" | "recent" | "product" | "mrp">("severity");
+  const [sort, setSort] = useState<"severity" | "recent" | "product">("severity");
 
   const label = (code: string) => limits.find((l) => l.code === code)?.title ?? code;
 
@@ -43,7 +43,6 @@ function Dashboard() {
       .sort((a, b) =>
         sort === "recent" ? latest(b.code).localeCompare(latest(a.code))
         : sort === "product" ? a.product.localeCompare(b.product)
-        : sort === "mrp" ? b.mrp - a.mrp
         : order[a.verdict] - order[b.verdict],
       );
   }, [products, history, query, status, sort]);
@@ -60,7 +59,6 @@ function Dashboard() {
   const reinspections = reinspectionsQuery.data ?? [];
 
   const kpis = [
-    { label: "Products", value: products.length, tone: "" },
     { label: "Compliant", value: counts.PASS, tone: "text-pass" },
     { label: "Needs review", value: counts.REVIEW, tone: "text-warning" },
     { label: "Violations", value: counts.FAIL, tone: "text-destructive" },
@@ -74,11 +72,10 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-7xl px-5 py-10">
-        <p className="font-mono text-[11px] text-muted-foreground">RULES 2011 / PORTFOLIO STATUS</p>
-        <h1 className="mt-1 font-mono text-2xl font-semibold">Compliance dashboard</h1>
+        <h1 className="font-mono text-2xl font-semibold">Compliance</h1>
         {productsQuery.isError && <p className="mt-3 text-[13px] text-destructive">The product records could not be loaded.</p>}
 
-        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-3 gap-3">
           {kpis.map((kpi) => (
             <div key={kpi.label} className="bg-card px-4 py-3 outline outline-border">
               <p className="font-mono text-[10px] uppercase text-muted-foreground">{kpi.label}</p>
@@ -90,7 +87,7 @@ function Dashboard() {
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">
           <section className="bg-card outline outline-border lg:col-span-8">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-              <h2 className="font-mono text-xs font-semibold">STATUS BY PRODUCT</h2>
+              <h2 className="font-mono text-xs font-semibold">PRODUCTS</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product" className="w-44 bg-background px-2.5 py-1 text-[12px] outline outline-border" />
                 <div className="flex">{(["ALL", "FAIL", "REVIEW", "PASS"] as const).map((key) => (
@@ -100,22 +97,20 @@ function Dashboard() {
                   <option value="severity">Sort: severity</option>
                   <option value="recent">Sort: most recent</option>
                   <option value="product">Sort: product name</option>
-                  <option value="mrp">Sort: highest MRP</option>
                 </select>
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-[13px]">
-                <thead><tr className="border-b border-border text-left font-mono text-[10px] uppercase text-muted-foreground"><th className="px-4 py-2">Product</th><th className="px-3 py-2">Net qty</th><th className="px-3 py-2">MRP</th><th className="px-4 py-2">Status</th></tr></thead>
+                <thead><tr className="border-b border-border text-left font-mono text-[10px] uppercase text-muted-foreground"><th className="px-4 py-2">Product</th><th className="px-3 py-2">Net qty</th><th className="px-4 py-2">Status</th></tr></thead>
                 <tbody>{rows.map((p) => (
                   <tr key={p.code} className="border-b border-border/70 align-top hover:bg-background">
                     <td className="px-4 py-3"><p className="font-medium">{p.product}</p><p className="font-mono text-[11px] text-muted-foreground">{p.code}</p></td>
                     <td className="px-3 py-3 font-mono">{p.netQuantity}</td>
-                    <td className="px-3 py-3 font-mono">Rs {p.mrp.toFixed(2)}</td>
                     <td className={`px-4 py-3 font-mono text-[11px] font-semibold ${verdictClass(p.verdict)}`}>{p.verdict}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-muted-foreground">{productsQuery.isLoading ? "Loading product records." : "No products match this filter."}</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-xs text-muted-foreground">{productsQuery.isLoading ? "Loading products." : "No matching products."}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -123,7 +118,7 @@ function Dashboard() {
 
           <div className="flex flex-col gap-5 lg:col-span-4">
             <section className="bg-card outline outline-border">
-              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">FLAGGED DECLARATIONS</h2></div>
+              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">FLAGGED</h2></div>
               <ul className="divide-y divide-border/70">{flagged.map((p) => (
                 <li key={p.code} className="px-4 py-3">
                   <p className="text-[13px] font-medium">{p.product}</p>
@@ -133,18 +128,6 @@ function Dashboard() {
                 </li>
               ))}
               {flagged.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">Nothing flagged.</li>}
-              </ul>
-            </section>
-
-            <section className="bg-card outline outline-border">
-              <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">RECENT INSPECTIONS</h2></div>
-              <ul className="divide-y divide-border/70 text-[13px]">{history.slice(0, 6).map((h) => (
-                <li key={h.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span><span className="font-mono text-[11px] text-muted-foreground">{h.inspectedOn}</span> <span className="ml-2">{nameFor(h.productCode)}</span></span>
-                  <span className={`font-mono text-[10px] font-semibold ${verdictClass(h.verdict)}`}>{h.verdict}</span>
-                </li>
-              ))}
-              {history.length === 0 && <li className="px-4 py-6 text-center text-xs text-muted-foreground">No inspections recorded yet.</li>}
               </ul>
             </section>
 
@@ -173,8 +156,6 @@ function Dashboard() {
             )}
           </div>
         </div>
-
-        <p className="mt-8 font-mono text-[11px]"><Link to="/" className="text-muted-foreground hover:text-foreground">New inspection</Link> · <Link to="/rules" className="text-muted-foreground hover:text-foreground">Legal limits</Link></p>
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { addLimit, addProduct, addUnit, fetchLimits, fetchProducts, fetchUnits } from "@/lib/catalog";
@@ -64,15 +64,52 @@ function Rules() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-5xl px-5 py-10">
-        <p className="font-mono text-[11px] text-muted-foreground">RULES 2011 / LEGAL LIMITS</p>
-        <h1 className="mt-1 font-mono text-2xl font-semibold">Legal limits, units and products</h1>
-        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Reference data used for every inspection. Add products, units or limits below.</p>
+        <h1 className="font-mono text-2xl font-semibold">Legal limits</h1>
 
         {status && <p className="mt-4 text-[13px] text-muted-foreground">{status}</p>}
         {error && <p className="mt-4 text-[13px] text-destructive">{error}</p>}
 
-        <div className="mt-8 flex flex-col gap-6">
-          <Section title="PRODUCTS ON RECORD" meta={`${productsQuery.data?.length ?? 0} PRODUCTS`}>
+        <div className="mt-6 flex flex-col gap-5">
+          <Section title="MANDATORY DECLARATIONS">
+            <table className="w-full min-w-[640px] text-[13px]">
+              <thead><tr className="border-b border-border"><th className={th}>Declaration</th><th className={th}>Requirement</th></tr></thead>
+              <tbody>{declarations.map((row) => (
+                <tr key={row.code} className="border-b border-border/70">
+                  <td className={`${td} font-medium`}>{row.title}</td>
+                  <td className={`${td} text-muted-foreground`}>{row.requirement}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </Section>
+
+          <Section title="MINIMUM NUMERAL HEIGHT">
+            <table className="w-full min-w-[480px] text-[13px]">
+              <thead><tr className="border-b border-border"><th className={th}>Net quantity</th><th className={th}>Minimum height</th></tr></thead>
+              <tbody>{bands.map((band) => (
+                <tr key={band.code} className="border-b border-border/70">
+                  <td className={td}>{band.title}</td>
+                  <td className={`${td} font-mono`}>{band.minHeightMm} mm</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </Section>
+
+          <Section title="UNITS">
+            <table className="w-full min-w-[420px] text-[13px]">
+              <thead><tr className="border-b border-border"><th className={th}>Symbol</th><th className={th}>Unit</th><th className={th}>Type</th><th className={th}>Factor</th></tr></thead>
+              <tbody>{(units.data ?? []).map((row) => (
+                <tr key={row.symbol} className="border-b border-border/70">
+                  <td className={`${td} font-mono`}>{row.symbol}</td>
+                  <td className={td}>{row.label}</td>
+                  <td className={`${td} text-muted-foreground`}>{row.kind}</td>
+                  <td className={`${td} font-mono`}>{row.baseFactor}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </Section>
+
+          <details className="bg-card outline outline-border">
+            <summary className="cursor-pointer px-4 py-3 font-mono text-xs font-semibold">MANAGE PRODUCTS</summary>
             <table className="w-full min-w-[680px] text-[13px]">
               <thead><tr className="border-b border-border"><th className={th}>Code</th><th className={th}>Product</th><th className={th}>Category</th><th className={th}>Net quantity</th><th className={th}>MRP</th></tr></thead>
               <tbody>{(productsQuery.data ?? []).map((row) => (
@@ -128,32 +165,10 @@ function Rules() {
                 </Button>
               </div>
             </div>
-          </Section>
+          </details>
 
-          <Section title="RULE 6 / MANDATORY DECLARATIONS" meta={`${declarations.length} CHECKS`}>
-            <table className="w-full min-w-[640px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Rule code</th><th className={th}>Declaration</th><th className={th}>Requirement</th></tr></thead>
-              <tbody>{declarations.map((row) => (
-                <tr key={row.code} className="border-b border-border/70">
-                  <td className={`${td} font-mono text-xs`}>{row.code}</td>
-                  <td className={`${td} font-medium`}>{row.title}</td>
-                  <td className={`${td} text-muted-foreground`}>{row.requirement}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </Section>
-
-          <Section title="RULE 7 / MINIMUM NUMERAL HEIGHT" meta="MILLIMETRES">
-            <table className="w-full min-w-[560px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Net quantity band</th><th className={th}>Minimum height</th><th className={th}>Rule code</th></tr></thead>
-              <tbody>{bands.map((band) => (
-                <tr key={band.code} className="border-b border-border/70">
-                  <td className={td}>{band.title}</td>
-                  <td className={`${td} font-mono`}>{band.minHeightMm} mm</td>
-                  <td className={`${td} font-mono text-xs`}>{band.code}</td>
-                </tr>
-              ))}</tbody>
-            </table>
+          <details className="bg-card outline outline-border">
+            <summary className="cursor-pointer px-4 py-3 font-mono text-xs font-semibold">MANAGE LEGAL LIMITS</summary>
             <div className="grid grid-cols-1 gap-2 border-t border-border p-4 sm:grid-cols-2">
               <Field id="l-code" label="Rule code" value={limit.code} onChange={(v) => setLimit({ ...limit, code: v })} placeholder="LMPC-R6-XXX" />
               <div className="grid grid-cols-2 items-center gap-2">
@@ -197,20 +212,10 @@ function Rules() {
                 </Button>
               </div>
             </div>
-          </Section>
+          </details>
 
-          <Section title="UNITS OF MEASUREMENT" meta={`${units.data?.length ?? 0} UNITS`}>
-            <table className="w-full min-w-[520px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Symbol</th><th className={th}>Unit</th><th className={th}>Kind</th><th className={th}>In base unit</th></tr></thead>
-              <tbody>{(units.data ?? []).map((row) => (
-                <tr key={row.symbol} className="border-b border-border/70">
-                  <td className={`${td} font-mono`}>{row.symbol}</td>
-                  <td className={td}>{row.label}</td>
-                  <td className={`${td} text-muted-foreground`}>{row.kind}</td>
-                  <td className={`${td} font-mono`}>{row.baseFactor}</td>
-                </tr>
-              ))}</tbody>
-            </table>
+          <details className="bg-card outline outline-border">
+            <summary className="cursor-pointer px-4 py-3 font-mono text-xs font-semibold">MANAGE UNITS</summary>
             <div className="grid grid-cols-1 gap-2 border-t border-border p-4 sm:grid-cols-2">
               <Field id="u-sym" label="Symbol" value={unit.symbol} onChange={(v) => setUnit({ ...unit, symbol: v })} placeholder="mg" />
               <Field id="u-lab" label="Unit name" value={unit.label} onChange={(v) => setUnit({ ...unit, label: v })} placeholder="milligram" />
@@ -233,11 +238,10 @@ function Rules() {
                 </Button>
               </div>
             </div>
-          </Section>
+          </details>
 
         </div>
 
-        <p className="mt-8 font-mono text-[11px]"><Link to="/" className="text-muted-foreground hover:text-foreground">New inspection</Link> · <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">Dashboard</Link></p>
       </main>
     </div>
   );
