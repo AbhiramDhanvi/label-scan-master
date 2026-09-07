@@ -162,13 +162,15 @@ export const recordInspection = async (input: {
   flagged: string[];
   labelImageUrl?: string | null;
 }) => {
-  const patch: Record<string, unknown> = {
-    verdict: input.verdict,
-    note: input.note,
-    flagged: input.flagged,
-  };
-  if (input.labelImageUrl) patch["label_image_url"] = input.labelImageUrl;
-  const { error } = await supabase.from("lm_products").update(patch).eq("code", input.code);
+  const { error } = await supabase
+    .from("lm_products")
+    .update({
+      verdict: input.verdict,
+      note: input.note,
+      flagged: input.flagged,
+      ...(input.labelImageUrl ? { label_image_url: input.labelImageUrl } : {}),
+    })
+    .eq("code", input.code);
   if (error) throw error;
 };
 
