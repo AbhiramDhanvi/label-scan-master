@@ -167,6 +167,8 @@ function Rules() {
               <Field id="l-req" label="Requirement" value={limit.requirement} onChange={(v) => setLimit({ ...limit, requirement: v })} />
               <Field id="l-mm" label="Min height mm" value={limit.minHeightMm} onChange={(v) => setLimit({ ...limit, minHeightMm: v })} placeholder="font band only" />
               <Field id="l-max" label="Band ceiling g/ml" value={limit.maxQuantityBase} onChange={(v) => setLimit({ ...limit, maxQuantityBase: v })} placeholder="font band only" />
+              <Field id="l-tol" label="Tolerance value" value={limit.toleranceValue} onChange={(v) => setLimit({ ...limit, toleranceValue: v })} placeholder="absolute g/ml" />
+              <Field id="l-tolpct" label="Tolerance percent" value={limit.tolerancePercent} onChange={(v) => setLimit({ ...limit, tolerancePercent: v })} placeholder="0.09 = 9%" />
               <Field id="l-cite" label="Citation" value={limit.citation} onChange={(v) => setLimit({ ...limit, citation: v })} />
               <div className="sm:col-span-2">
                 <Button
@@ -180,11 +182,13 @@ function Rules() {
                       requirement: limit.requirement.trim(),
                       minHeightMm: limit.minHeightMm ? Number.parseFloat(limit.minHeightMm) : null,
                       maxQuantityBase: limit.maxQuantityBase ? Number.parseFloat(limit.maxQuantityBase) : null,
+                      toleranceValue: limit.toleranceValue ? Number.parseFloat(limit.toleranceValue) : null,
+                      tolerancePercent: limit.tolerancePercent ? Number.parseFloat(limit.tolerancePercent) : null,
                       citation: limit.citation.trim() || null,
                     }),
                     "Legal limit added to the database.",
                     () => {
-                      setLimit({ code: "", kind: "declaration", title: "", requirement: "", minHeightMm: "", maxQuantityBase: "", citation: "" });
+                      setLimit({ code: "", kind: "declaration", title: "", requirement: "", minHeightMm: "", maxQuantityBase: "", toleranceValue: "", tolerancePercent: "", citation: "" });
                       void limits.refetch();
                     },
                   )}
