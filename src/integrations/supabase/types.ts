@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      lm_inspections: {
+        Row: {
+          batch_no: string
+          created_at: string
+          flagged: string[]
+          id: string
+          inspected_on: string
+          label_image_url: string | null
+          lot_size: string
+          note: string
+          officer: string
+          product_code: string
+          site: string
+          verdict: string
+        }
+        Insert: {
+          batch_no?: string
+          created_at?: string
+          flagged?: string[]
+          id?: string
+          inspected_on?: string
+          label_image_url?: string | null
+          lot_size?: string
+          note?: string
+          officer?: string
+          product_code: string
+          site?: string
+          verdict: string
+        }
+        Update: {
+          batch_no?: string
+          created_at?: string
+          flagged?: string[]
+          id?: string
+          inspected_on?: string
+          label_image_url?: string | null
+          lot_size?: string
+          note?: string
+          officer?: string
+          product_code?: string
+          site?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
       lm_limits: {
         Row: {
           citation: string | null

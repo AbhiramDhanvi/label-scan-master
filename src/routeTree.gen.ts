@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as InspectRouteImport } from './routes/inspect'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -24,11 +23,6 @@ const IndexRoute = IndexRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InspectRoute = InspectRouteImport.update({
-  id: '/inspect',
-  path: '/inspect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -50,7 +44,6 @@ const TermsRoute = TermsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/inspect': typeof InspectRoute
   '/privacy': typeof PrivacyRoute
   '/rules': typeof RulesRoute
   '/terms': typeof TermsRoute
@@ -58,7 +51,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/inspect': typeof InspectRoute
   '/privacy': typeof PrivacyRoute
   '/rules': typeof RulesRoute
   '/terms': typeof TermsRoute
@@ -67,30 +59,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/inspect': typeof InspectRoute
   '/privacy': typeof PrivacyRoute
   '/rules': typeof RulesRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/inspect' | '/privacy' | '/rules' | '/terms'
+  fullPaths: '/' | '/dashboard' | '/privacy' | '/rules' | '/terms'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/inspect' | '/privacy' | '/rules' | '/terms'
-  id:
-    | '__root__'
-    | '/'
-    | '/dashboard'
-    | '/inspect'
-    | '/privacy'
-    | '/rules'
-    | '/terms'
+  to: '/' | '/dashboard' | '/privacy' | '/rules' | '/terms'
+  id: '__root__' | '/' | '/dashboard' | '/privacy' | '/rules' | '/terms'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
-  InspectRoute: typeof InspectRoute
   PrivacyRoute: typeof PrivacyRoute
   RulesRoute: typeof RulesRoute
   TermsRoute: typeof TermsRoute
@@ -110,13 +93,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inspect': {
-      id: '/inspect'
-      path: '/inspect'
-      fullPath: '/inspect'
-      preLoaderRoute: typeof InspectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -146,7 +122,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
-  InspectRoute: InspectRoute,
   PrivacyRoute: PrivacyRoute,
   RulesRoute: RulesRoute,
   TermsRoute: TermsRoute,
