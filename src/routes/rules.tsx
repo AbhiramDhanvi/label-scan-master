@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { amendments, penalties } from "@/data/lmpc";
 import { addLimit, addProduct, addUnit, fetchLimits, fetchProducts, fetchUnits } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 
@@ -67,7 +66,7 @@ function Rules() {
       <main className="mx-auto max-w-5xl px-5 py-10">
         <p className="font-mono text-[11px] text-muted-foreground">RULES 2011 / LEGAL LIMITS</p>
         <h1 className="mt-1 font-mono text-2xl font-semibold">Legal limits, units and products</h1>
-        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Every inspection is compared against the records stored here. Add a new product, unit or limit with the forms below; nothing needs to be uploaded again. Figures follow the Legal Metrology (Packaged Commodities) Rules, 2011 and its amendments; verify against the current Gazette notification before enforcement action.</p>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Reference data used for every inspection. Add products, units or limits below.</p>
 
         {status && <p className="mt-4 text-[13px] text-muted-foreground">{status}</p>}
         {error && <p className="mt-4 text-[13px] text-destructive">{error}</p>}
@@ -155,7 +154,6 @@ function Rules() {
                 </tr>
               ))}</tbody>
             </table>
-            <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">Heights are measured by calibrating against a reference card of fixed width 85.6 mm to obtain a pixel-to-millimetre ratio. With no reference object in frame, the field is routed to review rather than given a pass or fail.</p>
             <div className="grid grid-cols-1 gap-2 border-t border-border p-4 sm:grid-cols-2">
               <Field id="l-code" label="Rule code" value={limit.code} onChange={(v) => setLimit({ ...limit, code: v })} placeholder="LMPC-R6-XXX" />
               <div className="grid grid-cols-2 items-center gap-2">
@@ -233,31 +231,6 @@ function Rules() {
             </div>
           </Section>
 
-          <Section title="AMENDMENTS" meta="VERSIONING BASIS">
-            <table className="w-full min-w-[640px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Rule code</th><th className={th}>Amendment</th><th className={th}>Effective</th><th className={th}>Citation</th></tr></thead>
-              <tbody>{amendments.map((row) => (
-                <tr key={row.code + row.effective} className="border-b border-border/70">
-                  <td className={`${td} font-mono text-xs`}>{row.code}</td>
-                  <td className={td}>{row.amendment}</td>
-                  <td className={`${td} font-mono`}>{row.effective}</td>
-                  <td className={`${td} text-muted-foreground`}>{row.citation}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </Section>
-
-          <Section title="LIMITS AND PENALTIES">
-            <table className="w-full min-w-[520px] text-[13px]">
-              <thead><tr className="border-b border-border"><th className={th}>Provision</th><th className={th}>Limit</th></tr></thead>
-              <tbody>{penalties.map((row) => (
-                <tr key={row.provision} className="border-b border-border/70">
-                  <td className={`${td} font-medium`}>{row.provision}</td>
-                  <td className={`${td} text-muted-foreground`}>{row.limit}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </Section>
         </div>
 
         <p className="mt-8 font-mono text-[11px]"><Link to="/" className="text-muted-foreground hover:text-foreground">New inspection</Link> · <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">Dashboard</Link></p>
