@@ -9,7 +9,7 @@ export type LocalInspection = {
   uid: string;
   createdAt: string;
   sync: SyncState;
-  error?: string;
+  error?: string | undefined;
   payload: InspectionPayload;
 };
 
