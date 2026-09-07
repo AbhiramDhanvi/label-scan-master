@@ -107,7 +107,16 @@ function Dashboard() {
         <h1 className="mt-1 font-mono text-2xl font-semibold">Compliance dashboard</h1>
         {productsQuery.isError && <p className="mt-3 text-[13px] text-destructive">The product records could not be loaded.</p>}
 
-        <div className="mt-6 grid grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {kpis.map((kpi) => (
+            <div key={kpi.label} className="bg-card px-4 py-3 outline outline-border">
+              <p className="font-mono text-[10px] uppercase text-muted-foreground">{kpi.label}</p>
+              <p className={`mt-1 font-mono text-2xl font-semibold ${kpi.tone}`}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-4">
           {(["PASS", "REVIEW", "FAIL"] as const).map((key) => (
             <div key={key} className="bg-card px-4 py-3 outline outline-border">
               <p className="font-mono text-[10px] uppercase text-muted-foreground">{key}</p>
@@ -116,6 +125,15 @@ function Dashboard() {
             </div>
           ))}
         </div>
+
+        {alerts.length > 0 && (
+          <section className="mt-4 bg-card outline outline-border">
+            <div className="border-b border-border px-4 py-2.5"><h2 className="font-mono text-xs font-semibold">RECENT ALERTS</h2></div>
+            <ul className="divide-y divide-border/70 text-[13px]">
+              {alerts.map((alert) => <li key={alert} className="px-4 py-2">{alert}</li>)}
+            </ul>
+          </section>
+        )}
 
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">
           <section className="bg-card outline outline-border lg:col-span-8">
