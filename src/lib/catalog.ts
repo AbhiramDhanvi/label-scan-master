@@ -26,6 +26,8 @@ export type CatalogLimit = {
   requirement: string;
   minHeightMm: number | null;
   maxQuantityBase: number | null;
+  toleranceValue: number | null;
+  tolerancePercent: number | null;
   citation: string | null;
 };
 
