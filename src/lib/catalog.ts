@@ -77,6 +77,8 @@ export const fetchLimits = async (): Promise<CatalogLimit[]> => {
     requirement: row.requirement,
     minHeightMm: row.min_height_mm === null ? null : Number(row.min_height_mm),
     maxQuantityBase: row.max_quantity_base === null ? null : Number(row.max_quantity_base),
+    toleranceValue: row.tolerance_value === null ? null : Number(row.tolerance_value),
+    tolerancePercent: row.tolerance_percent === null ? null : Number(row.tolerance_percent),
     citation: row.citation,
   }));
 };
