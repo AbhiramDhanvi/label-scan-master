@@ -490,26 +490,6 @@ export function evaluateInspection(input: {
     note: measurementNote,
   };
 
-  // Unit consistency check between declared and measured quantities.
-  if (measuredQuantity !== undefined && !Number.isNaN(measuredQuantity) && declaredBase !== null && unit) {
-    const measuredLabel = unit === "ml" ? "millilitres" : unit === "g" ? "grams" : "count";
-    const expectedLabel = unit === "ml" ? "millilitres" : unit === "g" ? "grams" : "count";
-    if (measuredLabel !== expectedLabel) {
-      findings.push({
-        code: "LMPC-QTY-UNIT",
-        declaration: "Quantity unit consistency",
-        requirement: `Measured unit must match declared unit (${expectedLabel})`,
-        detected: measuredLabel,
-        expected: expectedLabel,
-        status: "REVIEW",
-        reason: "The unit used for the manual measurement does not match the declared quantity unit.",
-        confidence: 0,
-        face: null,
-        box: null,
-      });
-    }
-  }
-
   const qualityWarnings = input.readings
     .filter((r) => r.quality.blurred || r.quality.glare || r.quality.score < LOW_CONFIDENCE || r.regions.length < MIN_REGIONS_PER_FACE)
     .map((r) => `${r.face}: ${[r.quality.blurred ? "blurred" : null, r.quality.glare ? "glare" : null, r.quality.score < LOW_CONFIDENCE ? `quality ${r.quality.score}%` : null, r.regions.length < MIN_REGIONS_PER_FACE ? `only ${r.regions.length} regions` : null].filter(Boolean).join(", ")}${r.quality.note ? ` (${r.quality.note})` : ""}`);
