@@ -98,7 +98,7 @@ function Index() {
           </section>
 
           <div className="flex flex-col gap-5 lg:col-span-4">
-            <section className="bg-card outline outline-border">
+            <section id="scan" className="bg-card outline outline-border">
               <PanelTitle title="SCAN / UPLOAD LABEL" meta={selected.code} />
               <div className="p-4">
                 <label className="grid aspect-[16/9] cursor-pointer place-items-center overflow-hidden bg-background outline outline-border hover:bg-muted">
