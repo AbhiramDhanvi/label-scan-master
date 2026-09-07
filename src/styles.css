@@ -151,6 +151,35 @@
   }
 }
 
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(6rem);
+    opacity: 0;
+  }
+}
+
+@utility animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+@utility animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+@utility animation-delay-300 {
+  animation-delay: 300ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
