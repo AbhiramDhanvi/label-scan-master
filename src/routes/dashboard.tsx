@@ -54,6 +54,50 @@ function Dashboard() {
   };
   const flagged = products.filter((p) => p.flagged.length > 0);
   const nameFor = (code: string) => products.find((p) => p.code === code)?.product ?? code;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const reinspections = reinspectionsQuery.data ?? [];
+
+  const topViolations = useMemo(() => {
+    const tally = new Map<string, number>();
+    for (const record of history) for (const code of record.flagged) tally.set(code, (tally.get(code) ?? 0) + 1);
+    return Array.from(tally.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [history]);
+
+  const highRisk = useMemo(() => {
+    const byCode = new Map<string, { code: string; total: number; violations: number; last: string }>();
+    for (const record of history) {
+      const row = byCode.get(record.productCode) ?? { code: record.productCode, total: 0, violations: 0, last: "" };
+      row.total += 1;
+      if (record.verdict !== "PASS") row.violations += 1;
+      if (record.inspectedOn > row.last) row.last = record.inspectedOn;
+      byCode.set(record.productCode, row);
+    }
+    return Array.from(byCode.values())
+      .filter((row) => row.violations >= 2 || (row.violations > 0 && row.violations === row.total && row.total > 1))
+      .sort((a, b) => b.violations - a.violations)
+      .slice(0, 6);
+  }, [history]);
+
+  const kpis = [
+    { label: "Total inspections", value: history.length, tone: "" },
+    { label: "Compliant", value: history.filter((h) => h.verdict === "PASS").length, tone: "text-pass" },
+    { label: "Potential violations", value: history.filter((h) => h.verdict === "FAIL").length, tone: "text-destructive" },
+    { label: "Needs review", value: history.filter((h) => h.verdict === "REVIEW").length, tone: "text-warning" },
+    { label: "Pending reinspection", value: reinspections.filter((r) => r.state === "PENDING").length, tone: "text-warning" },
+  ];
+
+  const alerts = [
+    ...history.filter((h) => h.verdict === "FAIL").slice(0, 3).map((h) => `Potential violation: ${nameFor(h.productCode)} on ${h.inspectedOn}`),
+    ...highRisk.slice(0, 2).map((row) => `Repeat violations: ${nameFor(row.code)} (${row.violations})`),
+    ...reinspections.filter((r) => r.state === "PENDING" && r.dueOn < today).slice(0, 2).map((r) => `Reinspection overdue: ${nameFor(r.productCode)} (due ${r.dueOn})`),
+    ...history.filter((h) => h.verdict === "REVIEW").slice(0, 2).map((h) => `Needs officer review: ${nameFor(h.productCode)} on ${h.inspectedOn}`),
+  ].slice(0, 6);
+
+  const mark = async (id: string, state: string) => {
+    await setReinspectionState(id, state);
+    await reinspectionsQuery.refetch();
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
