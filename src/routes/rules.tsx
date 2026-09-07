@@ -46,7 +46,7 @@ function Rules() {
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
   const [product, setProduct] = useState({ code: "", product: "", category: "", mrp: "", netQuantity: "", quantityBase: "", unitSymbol: "g", imported: false });
-  const [limit, setLimit] = useState({ code: "", kind: "declaration", title: "", requirement: "", minHeightMm: "", maxQuantityBase: "", citation: "" });
+  const [limit, setLimit] = useState({ code: "", kind: "declaration", title: "", requirement: "", minHeightMm: "", maxQuantityBase: "", toleranceValue: "", tolerancePercent: "", citation: "" });
   const [unit, setUnit] = useState({ symbol: "", label: "", kind: "mass", baseFactor: "1" });
 
   const run = async (action: () => Promise<void>, message: string, after: () => void) => {

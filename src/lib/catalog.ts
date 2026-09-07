@@ -135,6 +135,8 @@ export const addLimit = async (input: {
   requirement: string;
   minHeightMm?: number | null;
   maxQuantityBase?: number | null;
+  toleranceValue?: number | null;
+  tolerancePercent?: number | null;
   citation?: string | null;
 }) => {
   const { error } = await supabase.from("lm_limits").insert({
@@ -144,6 +146,8 @@ export const addLimit = async (input: {
     requirement: input.requirement,
     min_height_mm: input.minHeightMm ?? null,
     max_quantity_base: input.maxQuantityBase ?? null,
+    tolerance_value: input.toleranceValue ?? null,
+    tolerance_percent: input.tolerancePercent ?? null,
     citation: input.citation ?? null,
   });
   if (error) throw error;
